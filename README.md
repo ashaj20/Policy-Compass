@@ -27,3 +27,10 @@ npm run dev                               # http://localhost:5173
 cd backend && uv run pytest
 cd frontend && npm test
 ```
+
+## Deploy (Render)
+`render.yaml` is a Render Blueprint. It creates one web service, built from the `Dockerfile`, that serves
+the API and the React app from the same URL, plus a Postgres 16 database. Migrations run on every start.
+
+1. In Render: **New → Blueprint**, choose this repository, then **Apply**.
+2. Wait for the deploy to finish, then open the service URL. `/api/health` should return `{"status":"ok"}`.

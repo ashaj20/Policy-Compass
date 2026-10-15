@@ -1,0 +1,29 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# Creates the Policy Compass web service and its Postgres database.
+services:
+  - type: web
+    name: policy-compass
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PC_ENVIRONMENT
+        value: production
+      - key: PC_DATABASE_URL
+        fromDatabase:
+          name: policy-compass-db
+          property: connectionString
+      # The React app is served from the same origin, so no cross-origin callers are needed.
+      - key: PC_CORS_ORIGINS
+        value: "[]"
+
+databases:
+  - name: policy-compass-db
+    databaseName: policy_compass
+    plan: basic-256mb
+    region: frankfurt
+    postgresMajorVersion: "16"
+    ipAllowList: []
