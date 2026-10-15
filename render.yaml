@@ -1,10 +1,15 @@
 # Render Blueprint: https://render.com/docs/blueprint-spec
-# Creates the Policy Compass web service and its Postgres database.
+# Beta setup on free plans: one web service (API + React app) on Render's free tier.
+# The database is hosted on Neon's free tier (Postgres + pgvector); Render asks for its
+# connection string when the Blueprint is created.
+#
+# To move to paid, always-on hosting later: set plan to "starter" and, if wanted, add a
+# Render database (see git history for the paid version of this file).
 services:
   - type: web
     name: policy-compass
     runtime: docker
-    plan: starter
+    plan: free
     region: frankfurt
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/health
@@ -12,18 +17,9 @@ services:
     envVars:
       - key: PC_ENVIRONMENT
         value: production
+      # Neon connection string, e.g. postgresql://user:pass@ep-xxx.eu-central-1.aws.neon.tech/neondb?sslmode=require
       - key: PC_DATABASE_URL
-        fromDatabase:
-          name: policy-compass-db
-          property: connectionString
+        sync: false
       # The React app is served from the same origin, so no cross-origin callers are needed.
       - key: PC_CORS_ORIGINS
         value: "[]"
-
-databases:
-  - name: policy-compass-db
-    databaseName: policy_compass
-    plan: basic-256mb
-    region: frankfurt
-    postgresMajorVersion: "16"
-    ipAllowList: []

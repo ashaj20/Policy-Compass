@@ -28,9 +28,15 @@ cd backend && uv run pytest
 cd frontend && npm test
 ```
 
-## Deploy (Render)
-`render.yaml` is a Render Blueprint. It creates one web service, built from the `Dockerfile`, that serves
-the API and the React app from the same URL, plus a Postgres 16 database. Migrations run on every start.
+## Deploy (Render + Neon, free tiers)
+`render.yaml` is a Render Blueprint. It creates one free web service, built from the `Dockerfile`, that serves
+the API and the React app from the same URL. Migrations run on every start. The database is a free Neon Postgres
+database, which supports pgvector.
 
-1. In Render: **New → Blueprint**, choose this repository, then **Apply**.
-2. Wait for the deploy to finish, then open the service URL. `/api/health` should return `{"status":"ok"}`.
+1. Neon (https://neon.tech): create a project (region: AWS Europe, Frankfurt) and copy its connection string.
+2. Render: **New → Blueprint**, choose this repository, paste the Neon connection string into
+   `PC_DATABASE_URL`, then click **Apply**.
+3. When the deploy finishes, open the service URL. `/api/health` should return `{"status":"ok"}`.
+
+Free-tier limits: the service sleeps after 15 minutes without traffic, so the first request then takes about
+a minute. It also has 512 MB of memory.
