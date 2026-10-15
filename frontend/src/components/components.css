@@ -1,0 +1,201 @@
+/* Button */
+.pc-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--pc-space-2);
+  min-height: var(--pc-touch);
+  padding: 0 var(--pc-space-5);
+  border: 1px solid transparent;
+  border-radius: var(--pc-radius-sm);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+.pc-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.pc-button--primary {
+  background: var(--pc-brand);
+  color: var(--pc-brand-contrast);
+}
+.pc-button--primary:hover:not(:disabled) {
+  background: var(--pc-brand-strong);
+}
+.pc-button--secondary {
+  background: var(--pc-surface);
+  color: var(--pc-text);
+  border-color: var(--pc-border);
+}
+.pc-button--secondary:hover:not(:disabled) {
+  background: var(--pc-gray-50);
+}
+.pc-button--danger {
+  background: var(--pc-error-700);
+  color: #fff;
+}
+.pc-button--ghost {
+  background: transparent;
+  color: var(--pc-brand-strong);
+}
+
+/* Spinner */
+.pc-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: pc-spin 0.8s linear infinite;
+}
+.pc-spinner--lg {
+  width: 28px;
+  height: 28px;
+  border-width: 3px;
+  color: var(--pc-brand);
+}
+@keyframes pc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Field */
+.pc-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pc-space-1);
+  margin-bottom: var(--pc-space-4);
+}
+.pc-field__label {
+  font-weight: 600;
+  font-size: var(--pc-text-sm);
+}
+.pc-field__hint {
+  margin: 0;
+  font-size: var(--pc-text-sm);
+  color: var(--pc-text-muted);
+}
+.pc-field__error {
+  margin: 0;
+  font-size: var(--pc-text-sm);
+  color: var(--pc-error-700);
+}
+.pc-input {
+  min-height: var(--pc-touch);
+  padding: 0 var(--pc-space-3);
+  border: 1px solid var(--pc-gray-400);
+  border-radius: var(--pc-radius-sm);
+  font: inherit;
+  color: var(--pc-text);
+  background: var(--pc-surface);
+}
+.pc-input[aria-invalid="true"] {
+  border-color: var(--pc-error-700);
+  border-width: 2px;
+}
+
+/* Alert */
+.pc-alert {
+  display: flex;
+  gap: var(--pc-space-3);
+  padding: var(--pc-space-4);
+  border: 1px solid;
+  border-radius: var(--pc-radius-md);
+}
+.pc-alert__icon {
+  font-weight: 700;
+  line-height: var(--pc-leading);
+}
+.pc-alert__title {
+  font-weight: 600;
+  margin: 0 0 var(--pc-space-1);
+}
+.pc-alert__text > :last-child {
+  margin-bottom: 0;
+}
+.pc-alert__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pc-space-2);
+  margin-top: var(--pc-space-3);
+}
+.pc-alert--info {
+  background: var(--pc-info-50);
+  border-color: var(--pc-info-700);
+  color: var(--pc-gray-900);
+}
+.pc-alert--info .pc-alert__icon {
+  color: var(--pc-info-700);
+}
+.pc-alert--success {
+  background: var(--pc-success-50);
+  border-color: var(--pc-success-700);
+}
+.pc-alert--success .pc-alert__icon {
+  color: var(--pc-success-700);
+}
+.pc-alert--warning {
+  background: var(--pc-warning-50);
+  border-color: var(--pc-warning-700);
+}
+.pc-alert--warning .pc-alert__icon {
+  color: var(--pc-warning-700);
+}
+.pc-alert--error {
+  background: var(--pc-error-50);
+  border-color: var(--pc-error-700);
+}
+.pc-alert--error .pc-alert__icon {
+  color: var(--pc-error-700);
+}
+
+/* Loading, empty and error states */
+.pc-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--pc-space-3);
+  padding: var(--pc-space-10) var(--pc-space-4);
+}
+.pc-state__title {
+  font-size: var(--pc-text-lg);
+  margin: 0;
+}
+.pc-state__text {
+  color: var(--pc-text-muted);
+  margin: 0;
+  max-width: 48ch;
+}
+.pc-state__ref {
+  font-size: var(--pc-text-sm);
+  color: var(--pc-text-muted);
+  margin: 0;
+}
+.pc-state__actions {
+  display: flex;
+  gap: var(--pc-space-2);
+}
+.pc-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pc-space-2);
+}
+.pc-skeleton__line {
+  height: 14px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--pc-gray-100), var(--pc-gray-50), var(--pc-gray-100));
+  background-size: 200% 100%;
+  animation: pc-shimmer 1.4s ease infinite;
+}
+.pc-skeleton__line:last-child {
+  width: 60%;
+}
+@keyframes pc-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}

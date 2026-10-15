@@ -1,0 +1,80 @@
+/*
+ * Policy Compass design tokens.
+ * Calm, professional, high-contrast. Colour is never the only signal: badges and alerts
+ * always pair colour with text and an icon.
+ * Text/background pairs below meet WCAG AA (4.5:1) for normal text.
+ */
+:root {
+  /* Brand: deep navigation blue */
+  --pc-primary-50: #eef4fb;
+  --pc-primary-100: #d6e4f5;
+  --pc-primary-600: #1f5aa6;
+  --pc-primary-700: #184a8a;
+  --pc-primary-800: #133a6c;
+
+  /* Neutrals */
+  --pc-gray-0: #ffffff;
+  --pc-gray-25: #f8fafc;
+  --pc-gray-50: #f2f5f8;
+  --pc-gray-100: #e6ebf0;
+  --pc-gray-200: #d3dbe3;
+  --pc-gray-400: #8693a3;
+  --pc-gray-600: #4b5867;
+  --pc-gray-700: #36414e;
+  --pc-gray-900: #141b24;
+
+  /* Status */
+  --pc-success-50: #ecf8f1;
+  --pc-success-700: #146c43;
+  --pc-warning-50: #fdf6e7;
+  --pc-warning-700: #8a5300;
+  --pc-error-50: #fdeeee;
+  --pc-error-700: #b42318;
+  --pc-info-50: #eaf3fd;
+  --pc-info-700: #175cd3;
+
+  /* Semantic */
+  --pc-bg: var(--pc-gray-25);
+  --pc-surface: var(--pc-gray-0);
+  --pc-border: var(--pc-gray-200);
+  --pc-border-subtle: var(--pc-gray-100);
+  --pc-text: var(--pc-gray-900);
+  --pc-text-muted: var(--pc-gray-600);
+  --pc-focus: #2563eb;
+
+  /* Organisation brand colour; overridden on public pages by organisation branding. */
+  --pc-brand: var(--pc-primary-600);
+  --pc-brand-strong: var(--pc-primary-700);
+  --pc-brand-contrast: #ffffff;
+
+  /* Typography */
+  --pc-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --pc-text-xs: 0.75rem;
+  --pc-text-sm: 0.875rem;
+  --pc-text-md: 1rem;
+  --pc-text-lg: 1.125rem;
+  --pc-text-xl: 1.375rem;
+  --pc-text-2xl: 1.75rem;
+  --pc-leading: 1.55;
+
+  /* Spacing (4px grid) */
+  --pc-space-1: 4px;
+  --pc-space-2: 8px;
+  --pc-space-3: 12px;
+  --pc-space-4: 16px;
+  --pc-space-5: 20px;
+  --pc-space-6: 24px;
+  --pc-space-8: 32px;
+  --pc-space-10: 40px;
+  --pc-space-12: 48px;
+
+  /* Shape and depth */
+  --pc-radius-sm: 6px;
+  --pc-radius-md: 10px;
+  --pc-radius-lg: 14px;
+  --pc-shadow-sm: 0 1px 2px rgb(16 24 40 / 0.06);
+  --pc-shadow-md: 0 4px 12px rgb(16 24 40 / 0.08);
+
+  /* Minimum touch target (WCAG 2.5.8 / mobile guidance) */
+  --pc-touch: 44px;
+}

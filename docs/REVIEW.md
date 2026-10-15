@@ -22,6 +22,8 @@ Items marked **[DECIDE]** need your call. The rest have a recommended default I 
 >   - The activation dialog shows the policy name, the version being activated and the version it replaces, and needs explicit confirmation.
 > - A2: **Auth built into FastAPI.** argon2 password hashes, email verification, password-reset and invite tokens, SMTP (console backend in dev).
 > - A3: **In-house RAG.** Postgres + pgvector, Claude for answers, behind a `RAGService` interface.
+> - A5: **Local embeddings model**, kept behind an interface so it can be swapped for a hosted provider such as Voyage later.
+> - Sections B–E: **proposed defaults accepted for now** (15 Oct 2026), to be refined later.
 > - A4: **No hard delete.** US-010 is replaced by US-010A (versioning & activation). Archive/Restore only.
 
 ### A1. Who activates a new version? [DECIDED — manual human approval, see above]
