@@ -156,7 +156,12 @@ export function UploadPolicyPage() {
             administrator has activated it.
           </p>
           <div className="pc-logo-setting__buttons">
-            <Button onClick={reset}>Upload another policy</Button>
+            <Link to={`/internal/policies/${uploaded.id}`} className="pc-button pc-button--primary">
+              View policy
+            </Link>
+            <Button variant="secondary" onClick={reset}>
+              Upload another policy
+            </Button>
             <Button variant="secondary" onClick={() => navigate("/internal/policies")}>
               Back to policies
             </Button>

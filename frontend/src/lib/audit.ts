@@ -20,11 +20,22 @@ export interface AuditDescription {
 }
 
 const ROLE: Record<string, string> = { ADMIN: "Administrator", STAFF: "Staff member" };
-const FIELD: Record<string, string> = { name: "Name", website: "Website", slug: "Public URL", logo: "Logo", role: "Role" };
+const FIELD: Record<string, string> = {
+  name: "Name",
+  website: "Website",
+  slug: "Public URL",
+  logo: "Logo",
+  role: "Role",
+  category: "Category",
+  audience: "Audience",
+  source: "Source",
+};
+const AUDIENCE: Record<string, string> = { INTERNAL: "Internal", PUBLIC: "Public", BOTH: "Both" };
 
 function show(field: string, value: unknown): string {
   if (value === null || value === undefined || value === "") return "Not set";
   if (field === "role") return ROLE[String(value)] ?? String(value);
+  if (field === "audience") return AUDIENCE[String(value)] ?? String(value);
   if (field === "slug") return `/p/${value}`;
   return String(value);
 }
@@ -64,6 +75,13 @@ export function describeEvent(e: AuditEvent): AuditDescription {
       return { summary: `changed the role of ${who}`, changes: diff(e) };
     case "MEMBER_REMOVED":
       return { summary: `removed ${who} from the organisation`, changes: [] };
+    case "POLICY_UPLOADED":
+      return {
+        summary: `uploaded the policy ${e.object_label}${e.new?.version ? ` (version ${e.new.version})` : ""}`,
+        changes: [],
+      };
+    case "POLICY_EDITED":
+      return { summary: `edited the policy ${e.object_label}`, changes: diff(e) };
     default:
       return { summary: e.action.toLowerCase().replace(/_/g, " "), changes: diff(e) };
   }

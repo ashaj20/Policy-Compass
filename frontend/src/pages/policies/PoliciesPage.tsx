@@ -196,7 +196,9 @@ export function PoliciesPage() {
                   {data.policies.map((p) => (
                     <tr key={p.id}>
                       <td data-label="Policy">
-                        <span className="pc-table__primary">{p.name}</span>
+                        <Link to={`/internal/policies/${p.id}`} className="pc-table__primary">
+                          {p.name}
+                        </Link>
                         <span className="pc-table__secondary">{p.category}</span>
                       </td>
                       <td data-label="Audience">

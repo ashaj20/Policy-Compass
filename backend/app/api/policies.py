@@ -1,9 +1,10 @@
 """Policy endpoints (US-006). Uploading is for administrators only."""
 
+import uuid
 from datetime import date, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Form, UploadFile, status
+from fastapi import APIRouter, Form, Response, UploadFile, status
 from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, ValidationError, field_validator
 
@@ -203,3 +204,91 @@ def upload_policy(
 def list_categories(admin: AdminOf, db: DbSession) -> list[str]:
     """Categories already in use, to suggest when uploading."""
     return service.categories(db, admin.organisation)
+
+
+class PolicyEditIn(BaseModel):
+    """Only the fields sent are changed. Send source as "" or null to clear it."""
+
+    name: str | None = None
+    category: str | None = None
+    audience: Audience | None = None
+    source: str | None = None
+
+    @field_validator("name")
+    @classmethod
+    def valid_name(cls, v: str | None) -> str:
+        return check_policy_name(v or "")
+
+    @field_validator("category")
+    @classmethod
+    def valid_category(cls, v: str | None) -> str:
+        return check_category(v or "")
+
+    _source = field_validator("source")(check_source)
+
+
+class PolicyDetailOut(PolicyOut):
+    status: str
+    version_count: int
+    # Configured in US-024.
+    owner: str | None = None
+    help_route: str | None = None
+
+
+def policy_detail_out(p: Policy) -> PolicyDetailOut:
+    return PolicyDetailOut(
+        **policy_out(p).model_dump(),
+        status=service.display_status(p),
+        version_count=len(p.versions),
+    )
+
+
+@router.get("/{policy_id}")
+def get_policy(policy_id: uuid.UUID, membership: MemberOf, db: DbSession) -> PolicyDetailOut:
+    policy = service.get_policy(
+        db, membership.organisation, policy_id, staff_view=membership.role != Role.ADMIN
+    )
+    return policy_detail_out(policy)
+
+
+@router.patch("/{policy_id}")
+def edit_policy(
+    policy_id: uuid.UUID, body: PolicyEditIn, admin: AdminOf, db: DbSession
+) -> PolicyDetailOut:
+    policy = service.get_policy(db, admin.organisation, policy_id, staff_view=False)
+    if "audience" in body.model_fields_set and body.audience is None:
+        raise AppError(
+            422,
+            "validation_error",
+            "Please check the highlighted fields.",
+            {"audience": "Choose who this policy is for"},
+        )
+    changes = {field: getattr(body, field) for field in body.model_fields_set}
+    service.edit_policy(db, policy, admin.user, changes)
+    db.refresh(policy)
+    return policy_detail_out(policy)
+
+
+@router.get("/{policy_id}/versions/{version_id}/file")
+def download_version(
+    policy_id: uuid.UUID,
+    version_id: uuid.UUID,
+    membership: MemberOf,
+    db: DbSession,
+    storage: FileStorage,
+) -> Response:
+    policy = service.get_policy(
+        db, membership.organisation, policy_id, staff_view=membership.role != Role.ADMIN
+    )
+    version = service.get_version(policy, version_id)
+    # The display name is already cleaned; quote it and offer an ASCII fallback.
+    safe = version.original_filename.replace('"', "").encode("ascii", "replace").decode()
+    return Response(
+        storage.read(version.storage_key),
+        media_type=version.content_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe}"',
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "private, no-store",
+        },
+    )

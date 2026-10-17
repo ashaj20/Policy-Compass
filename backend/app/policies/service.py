@@ -8,8 +8,8 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from app.audit import AuditAction, record
-from app.errors import AppError
+from app.audit import AuditAction, changed_fields, record
+from app.errors import AppError, NotFound
 from app.models import Audience, Organisation, Policy, PolicyVersion, User, VersionStatus
 from app.policies.validation import FileRejected, detect_policy_file, display_filename
 from app.storage import Storage
@@ -177,3 +177,71 @@ def list_policies(
     if wanted:
         policies = [p for p in policies if display_status(p) == wanted]
     return policies
+
+
+def get_policy(db: Session, organisation: Organisation, policy_id, staff_view: bool) -> Policy:
+    """One policy in this organisation, or 404. Staff can only open READY policies."""
+    policy = db.scalar(
+        select(Policy)
+        .where(Policy.id == policy_id, Policy.organisation_id == organisation.id)
+        .options(selectinload(Policy.versions))
+    )
+    if policy is None or (staff_view and display_status(policy) != VersionStatus.READY):
+        raise NotFound("This policy is no longer available.")
+    return policy
+
+
+EDITABLE_POLICY_FIELDS = ("name", "category", "audience", "source")
+
+
+def edit_policy(db: Session, policy: Policy, actor: User, changes: dict) -> None:
+    """Edit policy-level details (US-023). Only fields that actually change are audited."""
+    if "name" in changes and changes["name"].lower() != policy.name.lower():
+        clash = db.scalar(
+            select(Policy.id).where(
+                Policy.organisation_id == policy.organisation_id,
+                func.lower(Policy.name) == changes["name"].lower(),
+                Policy.id != policy.id,
+            )
+        )
+        if clash:
+            msg = "Another policy already has this name"
+            raise AppError(409, "policy_exists", msg, {"name": msg})
+
+    before = {
+        f: str(getattr(policy, f)) if getattr(policy, f) else None for f in EDITABLE_POLICY_FIELDS
+    }
+    for field, value in changes.items():
+        if field in EDITABLE_POLICY_FIELDS:
+            setattr(policy, field, value)
+    after = {
+        f: str(getattr(policy, f)) if getattr(policy, f) else None for f in EDITABLE_POLICY_FIELDS
+    }
+    previous, new = changed_fields(before, after)
+    if not new:
+        return
+    touch(policy)
+    record(
+        db,
+        organisation_id=policy.organisation_id,
+        actor=actor,
+        action=AuditAction.POLICY_EDITED,
+        object_type="policy",
+        object_id=policy.id,
+        object_label=policy.name,
+        previous=previous,
+        new=new,
+    )
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        msg = "Another policy already has this name"
+        raise AppError(409, "policy_exists", msg, {"name": msg}) from None
+
+
+def get_version(policy: Policy, version_id) -> PolicyVersion:
+    for v in policy.versions:
+        if str(v.id) == str(version_id):
+            return v
+    raise NotFound("This document is no longer available.")

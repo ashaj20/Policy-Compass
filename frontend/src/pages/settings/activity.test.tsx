@@ -51,6 +51,14 @@ describe("describeEvent", () => {
       event({ action: "ORGANISATION_SETTINGS_CHANGED", previous: { website: null }, new: { website: "https://x.org" } }),
     );
     expect(settings.changes).toEqual([{ label: "Website", from: "Not set", to: "https://x.org" }]);
+    expect(
+      describeEvent(event({ action: "POLICY_UPLOADED", object_label: "Rent Policy", new: { version: "1.4" } })).summary,
+    ).toBe("uploaded the policy Rent Policy (version 1.4)");
+    const edited = describeEvent(
+      event({ action: "POLICY_EDITED", object_label: "Rent Policy", previous: { audience: "INTERNAL" }, new: { audience: "BOTH" } }),
+    );
+    expect(edited.summary).toBe("edited the policy Rent Policy");
+    expect(edited.changes).toEqual([{ label: "Audience", from: "Internal", to: "Both" }]);
   });
 });
 
