@@ -117,7 +117,7 @@ describe("Create organisation", () => {
 
     expect(await screen.findByText("Your organisation has been created.")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Riverside Housing" })).toBeInTheDocument();
-    expect(screen.getByText("Administrator")).toBeInTheDocument();
+    expect(screen.getByText(/· Administrator/)).toBeInTheDocument();
     expect(created).toEqual({ name: "Riverside Housing", slug: "riverside-housing", website: "www.riversidehousing.example" });
     expect(logoUploaded).toBe(true);
   });
