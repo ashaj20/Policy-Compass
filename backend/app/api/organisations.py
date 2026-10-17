@@ -35,6 +35,12 @@ class OrganisationUpdateIn(BaseModel):
     _website = field_validator("website")(check_website)
 
 
+class SlugIn(BaseModel):
+    slug: str
+
+    _slug = field_validator("slug")(check_slug)
+
+
 class OrganisationOut(BaseModel):
     id: str
     name: str
@@ -92,6 +98,12 @@ def update_organisation(
 ) -> OrganisationOut:
     changes = {field: getattr(body, field) for field in body.model_fields_set}
     service.update_organisation(db, membership.organisation, changes)
+    return organisation_out(membership)
+
+
+@router.put("/{organisation_id}/slug")
+def change_slug(body: SlugIn, membership: AdminOf, db: DbSession) -> OrganisationOut:
+    service.change_slug(db, membership.organisation, body.slug)
     return organisation_out(membership)
 
 

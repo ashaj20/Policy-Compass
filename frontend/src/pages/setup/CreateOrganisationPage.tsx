@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Navigate } from "react-router-dom";
 import { Alert, AuthLayout, Button, Input } from "../../components";
+import { SlugPreview } from "../../components/SlugPreview";
 import { api, ApiError } from "../../lib/api";
 import { currentMembership, useAuth } from "../../lib/auth";
-import { publicUrl, slugify, validateSlug } from "../../lib/slug";
+import { slugify, validateSlug } from "../../lib/slug";
+import { useSlugAvailability } from "../../lib/useSlugAvailability";
 import { LOGO_ACCEPT, validateLogo, validateOrganisationName, validateWebsite } from "../../lib/organisation";
 import { focusFirstError, hasErrors, type FieldErrors } from "../../lib/validation";
 
@@ -12,7 +14,6 @@ interface Organisation {
   slug: string;
 }
 
-type SlugStatus = { state: "idle" | "checking" } | { state: "available" } | { state: "unavailable"; message: string };
 function formatSize(bytes: number): string {
   return bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
@@ -24,7 +25,6 @@ export function CreateOrganisationPage() {
   const [website, setWebsite] = useState("");
   const [slug, setSlug] = useState("");
   const [slugEdited, setSlugEdited] = useState(false);
-  const [slugStatus, setSlugStatus] = useState<SlugStatus>({ state: "idle" });
   const [logo, setLogo] = useState<File>();
   const [logoPreview, setLogoPreview] = useState<string>();
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -33,24 +33,7 @@ export function CreateOrganisationPage() {
   // Set once creation finishes, so the redirect below can carry the success message.
   const completed = useRef<{ notice?: string }>(undefined);
 
-  // Check the public URL is free shortly after the person stops typing.
-  useEffect(() => {
-    if (!slug || validateSlug(slug)) {
-      setSlugStatus({ state: "idle" });
-      return;
-    }
-    setSlugStatus({ state: "checking" });
-    const timer = setTimeout(() => {
-      api<{ available: boolean; message: string | null }>(
-        `/organisations/slug-available?slug=${encodeURIComponent(slug)}`,
-      )
-        .then((r) =>
-          setSlugStatus(r.available ? { state: "available" } : { state: "unavailable", message: r.message ?? "" }),
-        )
-        .catch(() => setSlugStatus({ state: "idle" }));
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [slug]);
+  const slugStatus = useSlugAvailability(slug);
 
   useEffect(() => () => {
     if (logoPreview) URL.revokeObjectURL(logoPreview);
@@ -179,20 +162,7 @@ export function CreateOrganisationPage() {
           error={errors.slug}
           aria-describedby={slugHintId}
         />
-        <div id={slugHintId} className="pc-slug-preview" aria-live="polite">
-          {slug && !validateSlug(slug) && (
-            <>
-              <span className="pc-slug-preview__url">{publicUrl(slug)}</span>
-              {slugStatus.state === "checking" && <span className="pc-slug-preview__status">Checking…</span>}
-              {slugStatus.state === "available" && (
-                <span className="pc-slug-preview__status pc-slug-preview__status--ok">✓ Available</span>
-              )}
-              {slugStatus.state === "unavailable" && (
-                <span className="pc-slug-preview__status pc-slug-preview__status--bad">✕ {slugStatus.message}</span>
-              )}
-            </>
-          )}
-        </div>
+        <SlugPreview id={slugHintId} slug={slug} status={slugStatus} />
 
         <fieldset className="pc-logo-picker">
           <legend className="pc-field__label">Logo (optional)</legend>

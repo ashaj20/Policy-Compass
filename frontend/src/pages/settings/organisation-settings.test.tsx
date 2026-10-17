@@ -135,3 +135,92 @@ describe("Organisation settings", () => {
     expect(screen.getByText("Reference: abc123")).toBeInTheDocument();
   });
 });
+
+describe("Changing the public URL", () => {
+  it("warns that links may break, then changes the URL", async () => {
+    let sent: unknown;
+    let me = admin;
+    mockApi({
+      "GET /auth/me": () => ({ status: 200, body: me }),
+      "GET /organisations/o1": () => ({ status: 200, body: org }),
+      "GET /organisations/slug-available": () => ({ status: 200, body: { available: true, message: null } }),
+      "PUT /organisations/o1/slug": (body) => {
+        sent = body;
+        me = { ...admin, memberships: [{ ...membership("ADMIN"), organisation_slug: "riverside-homes" }] };
+        return { status: 200, body: { ...org, slug: "riverside-homes" } };
+      },
+    });
+    renderApp("/internal/settings");
+    const section = await screen.findByRole("region", { name: "Public URL" });
+    await userEvent.click(within(section).getByRole("button", { name: "Change URL" }));
+    const field = within(section).getByLabelText("New public URL");
+    expect(field).toHaveFocus();
+    await userEvent.clear(field);
+    await userEvent.type(field, "riverside-homes");
+    expect(await within(section).findByText("✓ Available")).toBeInTheDocument();
+    await userEvent.click(within(section).getByRole("button", { name: "Change URL" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Change your public URL?" });
+    expect(dialog).toHaveTextContent("Changing your public URL may break existing links.");
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toHaveFocus();
+    expect(sent).toBeUndefined(); // nothing changes until confirmed
+    await userEvent.click(within(dialog).getByRole("button", { name: "Change URL" }));
+
+    expect(await within(section).findByText("Your public URL has been changed.")).toBeInTheDocument();
+    expect(sent).toEqual({ slug: "riverside-homes" });
+    expect(within(section).getByRole("link")).toHaveAttribute("href", "/p/riverside-homes");
+  });
+
+  it("cancelling the warning leaves the URL unchanged", async () => {
+    const spy = mockApi({
+      "GET /auth/me": () => ({ status: 200, body: admin }),
+      "GET /organisations/o1": () => ({ status: 200, body: org }),
+      "GET /organisations/slug-available": () => ({ status: 200, body: { available: true, message: null } }),
+    });
+    renderApp("/internal/settings");
+    const section = await screen.findByRole("region", { name: "Public URL" });
+    await userEvent.click(within(section).getByRole("button", { name: "Change URL" }));
+    const field = within(section).getByLabelText("New public URL");
+    await userEvent.clear(field);
+    await userEvent.type(field, "riverside-homes");
+    await userEvent.click(within(section).getByRole("button", { name: "Change URL" }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(spy.mock.calls.some(([, init]) => init?.method === "PUT")).toBe(false);
+  });
+
+  it("rejects an invalid or taken URL before asking to confirm", async () => {
+    mockApi({
+      "GET /auth/me": () => ({ status: 200, body: admin }),
+      "GET /organisations/o1": () => ({ status: 200, body: org }),
+      "GET /organisations/slug-available": () => ({
+        status: 200,
+        body: { available: false, message: "This URL is already taken. Please choose another" },
+      }),
+    });
+    renderApp("/internal/settings");
+    const section = await screen.findByRole("region", { name: "Public URL" });
+    await userEvent.click(within(section).getByRole("button", { name: "Change URL" }));
+    const field = within(section).getByLabelText("New public URL");
+    await userEvent.clear(field);
+    await userEvent.type(field, "river_side");
+    await userEvent.click(within(section).getByRole("button", { name: "Change URL" }));
+    expect(within(section).getByText(/Use only lowercase letters/)).toBeInTheDocument();
+
+    await userEvent.clear(field);
+    await userEvent.type(field, "other-org");
+    expect(await within(section).findByText(/✕ This URL is already taken/)).toBeInTheDocument();
+    await userEvent.click(within(section).getByRole("button", { name: "Change URL" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("is not offered to staff members", async () => {
+    mockApi({
+      "GET /auth/me": () => ({ status: 200, body: staff }),
+      "GET /organisations/o1": () => ({ status: 200, body: { ...org, role: "STAFF" } }),
+    });
+    renderApp("/internal/settings");
+    const section = await screen.findByRole("region", { name: "Public URL" });
+    expect(within(section).queryByRole("button", { name: "Change URL" })).not.toBeInTheDocument();
+  });
+});

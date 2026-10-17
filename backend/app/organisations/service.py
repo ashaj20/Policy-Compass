@@ -91,3 +91,20 @@ def remove_logo(db: Session, organisation: Organisation, storage: Storage) -> No
     db.commit()
     if old_key:
         storage.delete(old_key)
+
+
+def change_slug(db: Session, organisation: Organisation, slug: str) -> None:
+    """Change the public URL (US-005). The old URL stops working immediately."""
+    if slug == organisation.slug:
+        return
+    taken = db.scalar(
+        select(Organisation.id).where(Organisation.slug == slug, Organisation.id != organisation.id)
+    )
+    if taken:
+        raise AppError(409, "slug_taken", SLUG_TAKEN, {"slug": SLUG_TAKEN})
+    organisation.slug = slug
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise AppError(409, "slug_taken", SLUG_TAKEN, {"slug": SLUG_TAKEN}) from None

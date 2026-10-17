@@ -10,7 +10,9 @@ import {
   validateWebsite,
   type Organisation,
 } from "../../lib/organisation";
-import { publicUrl } from "../../lib/slug";
+import { SlugPreview } from "../../components/SlugPreview";
+import { publicUrl, validateSlug } from "../../lib/slug";
+import { useSlugAvailability } from "../../lib/useSlugAvailability";
 import { focusFirstError, hasErrors, type FieldErrors } from "../../lib/validation";
 
 type Notice = { tone: "success" | "error"; text: string };
@@ -56,7 +58,7 @@ export function OrganisationSettingsPage() {
         <>
           <DetailsSection org={org} isAdmin={isAdmin} onSaved={setOrg} />
           <LogoSection org={org} isAdmin={isAdmin} onChanged={setOrg} />
-          <PublicUrlSection org={org} />
+          <PublicUrlSection org={org} isAdmin={isAdmin} onChanged={setOrg} />
           {isAdmin && (
             <section className="pc-card" aria-labelledby="members-settings-heading">
               <h2 id="members-settings-heading" className="pc-card__title">
@@ -268,9 +270,26 @@ function LogoSection({
   );
 }
 
-function PublicUrlSection({ org }: { org: Organisation }) {
+function PublicUrlSection({
+  org,
+  isAdmin,
+  onChanged,
+}: {
+  org: Organisation;
+  isAdmin: boolean;
+  onChanged: (org: Organisation) => void;
+}) {
+  const { refresh } = useAuth();
   const url = publicUrl(org.slug);
   const [copied, setCopied] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [slug, setSlug] = useState(org.slug);
+  const [error, setError] = useState<string>();
+  const [confirming, setConfirming] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState<Notice>();
+  const status = useSlugAvailability(editing ? slug : "", org.slug);
+  const inputRef = useRef<HTMLFormElement>(null);
 
   async function copy() {
     try {
@@ -281,24 +300,116 @@ function PublicUrlSection({ org }: { org: Organisation }) {
     }
   }
 
+  function startEditing() {
+    setNotice(undefined);
+    setSlug(org.slug);
+    setError(undefined);
+    setEditing(true);
+  }
+
+  function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    const problem =
+      validateSlug(slug) ??
+      (slug === org.slug ? "Enter a different URL to change it" : undefined) ??
+      (status.state === "unavailable" ? status.message : undefined);
+    setError(problem);
+    if (problem) return focusFirstError(inputRef.current);
+    setConfirming(true);
+  }
+
+  async function onConfirm() {
+    setSaving(true);
+    try {
+      const saved = await api<Organisation>(`/organisations/${org.id}/slug`, {
+        method: "PUT",
+        body: JSON.stringify({ slug }),
+      });
+      onChanged(saved);
+      setConfirming(false);
+      setEditing(false);
+      setNotice({ tone: "success", text: "Your public URL has been changed." });
+      await refresh();
+    } catch (err) {
+      const apiErr = err as ApiError;
+      setConfirming(false);
+      setError(apiErr.fields.slug ?? apiErr.message);
+      focusFirstError(inputRef.current);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <section className="pc-card" aria-labelledby="public-url-heading">
       <h2 id="public-url-heading" className="pc-card__title">
         Public URL
       </h2>
+      {notice && <Alert tone={notice.tone} title={notice.text} />}
       <p className="pc-auth__muted">Members of the public use this address to ask questions about your policies.</p>
-      <div className="pc-public-url">
-        <a href={`/p/${org.slug}`} target="_blank" rel="noopener noreferrer" className="pc-public-url__link">
-          {url}
-          <span className="visually-hidden"> (opens in a new tab)</span>
-        </a>
-        <Button variant="secondary" onClick={copy}>
-          Copy link
-        </Button>
-      </div>
-      <p className="pc-field__hint" role="status">
-        {copied ? "Link copied." : ""}
-      </p>
+
+      {editing ? (
+        <form ref={inputRef} onSubmit={onSubmit} noValidate className="pc-settings-form pc-auth__spaced">
+          <Input
+            label="New public URL"
+            hint="Lowercase letters, numbers and hyphens."
+            autoCapitalize="none"
+            spellCheck={false}
+            value={slug}
+            onChange={(e) => setSlug(e.target.value.trim().toLowerCase())}
+            error={error}
+            aria-describedby="new-slug-status"
+            autoFocus
+          />
+          <SlugPreview id="new-slug-status" slug={slug} status={status} />
+          <div className="pc-logo-setting__buttons">
+            <Button type="submit">Change URL</Button>
+            <Button variant="secondary" onClick={() => setEditing(false)}>
+              Cancel
+            </Button>
+          </div>
+        </form>
+      ) : (
+        <>
+          <div className="pc-public-url">
+            <a href={`/p/${org.slug}`} target="_blank" rel="noopener noreferrer" className="pc-public-url__link">
+              {url}
+              <span className="visually-hidden"> (opens in a new tab)</span>
+            </a>
+            <Button variant="secondary" onClick={copy}>
+              Copy link
+            </Button>
+            {isAdmin && (
+              <Button variant="ghost" onClick={startEditing}>
+                Change URL
+              </Button>
+            )}
+          </div>
+          <p className="pc-field__hint" role="status">
+            {copied ? "Link copied." : ""}
+          </p>
+        </>
+      )}
+
+      {confirming && (
+        <ConfirmDialog
+          title="Change your public URL?"
+          message={
+            <>
+              <p>Changing your public URL may break existing links.</p>
+              <p className="pc-auth__muted">
+                New address: <strong>{publicUrl(slug)}</strong>. The old address will stop working, including any
+                links or embedded widgets that use it.
+              </p>
+            </>
+          }
+          confirmLabel="Change URL"
+          onConfirm={onConfirm}
+          onCancel={() => setConfirming(false)}
+          busy={saving}
+          destructive={false}
+        />
+      )}
     </section>
   );
 }
