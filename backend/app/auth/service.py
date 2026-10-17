@@ -135,6 +135,13 @@ def login(db: Session, email: str, password: str, settings: Settings) -> SignedI
             "Please verify your email address before signing in. "
             "Check your inbox, or we can send you a new link.",
         )
+    token = create_session(db, user, settings)
+    db.commit()
+    return SignedIn(user=user, session_token=token)
+
+
+def create_session(db: Session, user: User, settings: Settings) -> str:
+    """Add a sign-in session for the user (caller commits) and return its cookie token."""
     token = new_token()
     db.add(
         UserSession(
@@ -143,8 +150,7 @@ def login(db: Session, email: str, password: str, settings: Settings) -> SignedI
             expires_at=_now() + timedelta(days=settings.session_days),
         )
     )
-    db.commit()
-    return SignedIn(user=user, session_token=token)
+    return token
 
 
 def user_for_session(db: Session, token: str | None) -> User | None:

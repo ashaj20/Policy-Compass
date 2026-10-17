@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     session_days: int = 14
     verify_token_hours: int = 24
     reset_token_minutes: int = 60
+    invitation_days: int = 7
 
     # Email. With no SMTP host, emails are written to the server log (development).
     email_from: str = "Policy Compass <no-reply@example.org>"

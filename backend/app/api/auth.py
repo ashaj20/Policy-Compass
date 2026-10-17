@@ -83,7 +83,7 @@ class UserOut(BaseModel):
     memberships: list[MembershipOut]
 
 
-def _user_out(db, user) -> UserOut:
+def user_out(db, user) -> UserOut:
     return UserOut(
         id=str(user.id),
         email=user.email,
@@ -124,16 +124,20 @@ def resend_verification(
 @router.post("/login")
 def login(body: LoginIn, response: Response, db: DbSession, settings: AppSettings) -> UserOut:
     signed_in = service.login(db, body.email, body.password, settings)
+    set_session_cookie(response, signed_in.session_token, settings)
+    return user_out(db, signed_in.user)
+
+
+def set_session_cookie(response: Response, token: str, settings) -> None:
     response.set_cookie(
         SESSION_COOKIE,
-        signed_in.session_token,
+        token,
         max_age=settings.session_days * 24 * 3600,
         httponly=True,
         secure=settings.secure_cookies,
         samesite="lax",
         path="/",
     )
-    return _user_out(db, signed_in.user)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -146,7 +150,7 @@ def logout(response: Response, db: DbSession, settings: AppSettings, token: Sess
 
 @router.get("/me")
 def me(user: CurrentUser, db: DbSession) -> UserOut:
-    return _user_out(db, user)
+    return user_out(db, user)
 
 
 @router.post("/password-reset/request", status_code=status.HTTP_202_ACCEPTED)

@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { LoadingState } from "../components";
+import { LoadingState } from "../components/States";
 import { api } from "./api";
 
 export interface Membership {

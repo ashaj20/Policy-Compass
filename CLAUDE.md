@@ -35,7 +35,9 @@ Implement stories one at a time, in the order in `docs/REVIEW.md` section E. For
 2. Implement only that story's scope — don't build future stories early.
 3. Add or update migrations, API, UI, validation, security checks and tests.
 4. Run backend and frontend tests and lint; fix failures.
-5. Report files changed and tests run.
+5. Commit that story on its own (message `US-0NN: ...`) and push to GitHub before starting the next one, so each story is a
+   restore point.
+6. Report files changed and tests run.
 
 ## Non-negotiable rules
 - Authorisation is enforced server-side on every endpoint. The UI is never the security boundary.
