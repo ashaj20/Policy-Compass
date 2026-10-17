@@ -21,6 +21,7 @@ const uploadedPolicy = {
   audience: "INTERNAL",
   source: null,
   created_at: "2026-10-17T10:00:00Z",
+  updated_at: new Date().toISOString(),
   latest_version: {
     id: "v1",
     version: "3.2",
@@ -87,6 +88,9 @@ describe("Upload policy", () => {
 
     expect(await screen.findByText("Policy uploaded successfully.")).toBeInTheDocument();
     expect(screen.getByText(/Processing policy/)).toBeInTheDocument();
+    expect(screen.getByText("Version 3.2")).toBeInTheDocument();
+    expect(screen.getByText("Effective 01 September 2026")).toBeInTheDocument();
+    expect(screen.getByText("today")).toBeInTheDocument();
     expect(screen.getByText("Processing")).toBeInTheDocument();
     expect(screen.getByText("Internal", { selector: ".pc-badge" })).toBeInTheDocument();
 

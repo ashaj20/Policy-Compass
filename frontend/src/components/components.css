@@ -1024,3 +1024,7 @@ a.pc-button {
   border-color: var(--pc-info-700);
   background: var(--pc-info-50);
 }
+.pc-version-meta {
+  margin: 0 0 var(--pc-space-4);
+  color: var(--pc-text-muted);
+}

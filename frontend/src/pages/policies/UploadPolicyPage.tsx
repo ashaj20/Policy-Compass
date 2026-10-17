@@ -4,6 +4,7 @@ import { Alert, AppShell, Button, ErrorState, Input, PageHeader } from "../../co
 import { AudienceBadge } from "../../components/AudienceBadge";
 import { FileDropzone } from "../../components/FileDropzone";
 import { RadioGroup } from "../../components/RadioGroup";
+import { VersionMeta } from "../../components/VersionMeta";
 import { api, ApiError, uploadWithProgress } from "../../lib/api";
 import { currentMembership, useAuth } from "../../lib/auth";
 import {
@@ -129,11 +130,8 @@ export function UploadPolicyPage() {
           <h2 id="upload-done-title" className="pc-card__title pc-auth__spaced">
             {uploaded.name}
           </h2>
+          <VersionMeta version={v.version} effectiveDate={v.effective_date} updatedAt={uploaded.updated_at} />
           <dl className="pc-summary pc-summary--inline">
-            <div>
-              <dt>Version</dt>
-              <dd>{v.version}</dd>
-            </div>
             <div>
               <dt>Document</dt>
               <dd>{v.original_filename}</dd>

@@ -21,6 +21,7 @@ export interface Policy {
   audience: Audience;
   source: string | null;
   created_at: string;
+  updated_at: string;
   latest_version: PolicyVersion;
 }
 

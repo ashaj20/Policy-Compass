@@ -55,6 +55,7 @@ class PolicyOut(BaseModel):
     audience: Audience
     source: str | None
     created_at: datetime
+    updated_at: datetime
     latest_version: VersionOut
 
 
@@ -79,6 +80,7 @@ def policy_out(p: Policy) -> PolicyOut:
         audience=p.audience,
         source=p.source,
         created_at=p.created_at,
+        updated_at=p.updated_at,
         latest_version=version_out(p.versions[-1]),
     )
 

@@ -198,3 +198,15 @@ def test_other_tenants_cannot_upload_into_an_organisation(org, db, make_client):
 def test_signed_out_upload_is_refused(org, client):
     _, org_id = org
     assert upload(client, org_id).status_code == 401
+
+
+def test_version_metadata_includes_last_updated(org, db):
+    jane, org_id = org
+    body = upload(jane, org_id).json()
+    assert body["latest_version"]["version"] == "3.2"
+    assert body["latest_version"]["effective_date"] == "2026-09-01"
+    assert body["updated_at"] is not None
+    policy = db.scalar(select(Policy))
+    version = db.scalar(select(PolicyVersion))
+    # Last updated is no earlier than the upload it reflects.
+    assert policy.updated_at >= version.uploaded_at

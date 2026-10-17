@@ -63,6 +63,10 @@ class Policy(Base):
         ForeignKey("users.id", ondelete="SET NULL")
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # When the policy or any of its versions last changed (US-008). Set by the service layer.
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.clock_timestamp()
+    )
 
     versions: Mapped[list["PolicyVersion"]] = relationship(
         back_populates="policy", order_by="PolicyVersion.uploaded_at"

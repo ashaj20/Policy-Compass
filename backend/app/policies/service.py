@@ -2,7 +2,7 @@
 
 import hashlib
 from dataclasses import dataclass
-from datetime import date
+from datetime import UTC, date, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -28,6 +28,12 @@ class PolicyUpload:
     audience: Audience
     category: str
     source: str | None
+
+
+def touch(policy: Policy, when: datetime | None = None) -> datetime:
+    """Mark the policy as changed (US-008 "last updated"). Call on every policy/version change."""
+    policy.updated_at = when or datetime.now(UTC)
+    return policy.updated_at
 
 
 def start_processing(version: PolicyVersion) -> None:
@@ -84,6 +90,7 @@ def upload_policy(
         file_size=len(data),
         sha256=hashlib.sha256(data).hexdigest(),
         uploaded_by_id=actor.id,
+        uploaded_at=touch(policy),
     )
     db.add(version)
     db.flush()
