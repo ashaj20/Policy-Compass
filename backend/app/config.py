@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     # Where uploaded files (logos, later policy documents) are stored on disk.
     storage_dir: str = "storage"
     logo_max_bytes: int = 2 * 1024 * 1024
+    policy_max_bytes: int = 20 * 1024 * 1024
 
     # Sessions and one-time tokens
     session_days: int = 14

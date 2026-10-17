@@ -55,3 +55,47 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
   return body as T;
 }
+
+/**
+ * Upload a form with progress reporting (fetch can't report upload progress).
+ * Errors use the same envelope and ApiError as `api()`.
+ */
+export function uploadWithProgress<T>(
+  path: string,
+  body: FormData,
+  onProgress: (percent: number) => void,
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `/api${path}`);
+    xhr.withCredentials = true;
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onerror = () => reject(new ApiError(0, "network_error", NETWORK_MESSAGE));
+    xhr.onload = () => {
+      let parsed: { error?: { code?: string; message?: string; fields?: Record<string, string>; error_id?: string } } | null =
+        null;
+      try {
+        parsed = xhr.responseText ? JSON.parse(xhr.responseText) : null;
+      } catch {
+        parsed = null;
+      }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(parsed as T);
+        return;
+      }
+      const err = parsed?.error;
+      reject(
+        new ApiError(
+          xhr.status,
+          err?.code ?? "unknown_error",
+          err?.message ?? "Something went wrong. Please try again.",
+          err?.fields ?? {},
+          err?.error_id,
+        ),
+      );
+    };
+    xhr.send(body);
+  });
+}

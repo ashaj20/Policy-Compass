@@ -38,6 +38,11 @@ export function InternalHomePage() {
         <p className="pc-auth__muted pc-auth__spaced">
           The dashboard and policy tools will appear here as they're built.
         </p>
+        {membership.role === "ADMIN" && (
+          <Link to="/internal/policies/new" className="pc-button pc-button--primary">
+            Upload a policy
+          </Link>
+        )}
       </section>
     </AppShell>
   );

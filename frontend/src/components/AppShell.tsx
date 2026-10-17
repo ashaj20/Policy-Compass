@@ -18,6 +18,7 @@ interface NavGroup {
 // Only pages that exist are listed; the navigation grows as stories are built (Spec §27).
 const NAV: NavGroup[] = [
   { items: [{ to: "/internal", label: "Home", end: true }] },
+  { label: "Policies", items: [{ to: "/internal/policies/new", label: "Upload policy", adminOnly: true }] },
   {
     label: "Settings",
     items: [
