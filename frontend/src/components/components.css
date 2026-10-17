@@ -782,3 +782,55 @@ a.pc-button {
   font-weight: 600;
   word-break: break-all;
 }
+/* Audit timeline */
+.pc-audit {
+  list-style: none;
+  margin: 0 0 var(--pc-space-4);
+  padding: 0;
+}
+.pc-audit__event {
+  position: relative;
+  display: flex;
+  gap: var(--pc-space-3);
+  padding: var(--pc-space-3) 0;
+  border-bottom: 1px solid var(--pc-border-subtle);
+}
+.pc-audit__event:last-child {
+  border-bottom: 0;
+}
+.pc-audit__dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  margin-top: 8px;
+  border-radius: 50%;
+  background: var(--pc-brand);
+}
+.pc-audit__body {
+  min-width: 0;
+}
+.pc-audit__summary {
+  margin: 0;
+  word-break: break-word;
+}
+.pc-audit__changes {
+  margin: var(--pc-space-1) 0 0;
+  padding-left: var(--pc-space-4);
+  font-size: var(--pc-text-sm);
+}
+.pc-audit__field {
+  color: var(--pc-text-muted);
+}
+.pc-audit__changes del {
+  color: var(--pc-text-muted);
+}
+.pc-audit__changes ins {
+  text-decoration: none;
+  font-weight: 600;
+}
+.pc-audit__time {
+  display: block;
+  margin-top: var(--pc-space-1);
+  font-size: var(--pc-text-sm);
+  color: var(--pc-text-muted);
+}

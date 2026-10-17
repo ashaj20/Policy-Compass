@@ -12,6 +12,7 @@ from urllib.parse import quote
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.audit import AuditAction, record
 from app.auth.security import hash_password, hash_token, new_token
 from app.auth.service import create_session
 from app.config import Settings
@@ -28,6 +29,10 @@ ROLE_LABELS = {Role.ADMIN: "Administrator", Role.STAFF: "Staff member"}
 
 def _now() -> datetime:
     return datetime.now(UTC)
+
+
+def _audit(db: Session, organisation_id, actor: User | None, action: AuditAction, **kw) -> None:
+    record(db, organisation_id=organisation_id, actor=actor, action=action, **kw)
 
 
 # --- Listing ---
@@ -125,6 +130,16 @@ def invite(
     )
     db.add(invitation)
     db.flush()
+    _audit(
+        db,
+        organisation.id,
+        inviter,
+        AuditAction.MEMBER_INVITED,
+        object_type="invitation",
+        object_id=invitation.id,
+        object_label=email,
+        new={"email": email, "role": str(role)},
+    )
     _send_invitation(invitation, token, inviter, settings, sender)
     db.commit()
     return invitation
@@ -153,14 +168,33 @@ def resend_invitation(
     token = new_token()  # the previous link stops working
     invitation.token_hash = hash_token(token)
     invitation.expires_at = _now() + timedelta(days=settings.invitation_days)
+    _audit(
+        db,
+        organisation.id,
+        inviter,
+        AuditAction.INVITATION_RESENT,
+        object_type="invitation",
+        object_id=invitation.id,
+        object_label=invitation.email,
+    )
     _send_invitation(invitation, token, inviter, settings, sender)
     db.commit()
     return invitation
 
 
-def revoke_invitation(db: Session, organisation: Organisation, invitation_id) -> None:
+def revoke_invitation(db: Session, organisation: Organisation, actor: User, invitation_id) -> None:
     invitation = _open_invitation_in(db, organisation, invitation_id)
     invitation.revoked_at = _now()
+    _audit(
+        db,
+        organisation.id,
+        actor,
+        AuditAction.INVITATION_CANCELLED,
+        object_type="invitation",
+        object_id=invitation.id,
+        object_label=invitation.email,
+        previous={"email": invitation.email, "role": invitation.role},
+    )
     db.commit()
 
 
@@ -209,6 +243,17 @@ def _join(db: Session, invitation: Invitation, user: User) -> Membership:
     )
     db.add(membership)
     invitation.accepted_at = _now()
+    db.flush()
+    _audit(
+        db,
+        invitation.organisation_id,
+        user,
+        AuditAction.MEMBER_JOINED,
+        object_type="member",
+        object_id=membership.id,
+        object_label=user.email,
+        new={"role": invitation.role},
+    )
     # Opening the emailed link proves the person controls this address.
     if not user.is_verified:
         user.email_verified_at = _now()
@@ -268,18 +313,44 @@ def _admin_count(db: Session, organisation: Organisation) -> int:
     )
 
 
-def change_role(db: Session, organisation: Organisation, membership_id, role: Role) -> Membership:
+def change_role(
+    db: Session, organisation: Organisation, actor: User, membership_id, role: Role
+) -> Membership:
     membership = _member_in(db, organisation, membership_id)
-    if membership.role == Role.ADMIN and role != Role.ADMIN and _admin_count(db, organisation) <= 1:
+    if membership.role == role:
+        return membership
+    if membership.role == Role.ADMIN and _admin_count(db, organisation) <= 1:
         raise AppError(409, "last_admin", LAST_ADMIN)
+    previous = membership.role
     membership.role = role
+    _audit(
+        db,
+        organisation.id,
+        actor,
+        AuditAction.MEMBER_ROLE_CHANGED,
+        object_type="member",
+        object_id=membership.id,
+        object_label=membership.user.email,
+        previous={"role": str(previous)},
+        new={"role": str(role)},
+    )
     db.commit()
     return membership
 
 
-def remove_member(db: Session, organisation: Organisation, membership_id) -> None:
+def remove_member(db: Session, organisation: Organisation, actor: User, membership_id) -> None:
     membership = _member_in(db, organisation, membership_id)
     if membership.role == Role.ADMIN and _admin_count(db, organisation) <= 1:
         raise AppError(409, "last_admin", LAST_ADMIN)
+    _audit(
+        db,
+        organisation.id,
+        actor,
+        AuditAction.MEMBER_REMOVED,
+        object_type="member",
+        object_id=membership.id,
+        object_label=membership.user.email,
+        previous={"email": membership.user.email, "role": str(membership.role)},
+    )
     db.delete(membership)
     db.commit()

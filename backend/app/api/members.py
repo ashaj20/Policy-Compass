@@ -145,20 +145,20 @@ def resend_invitation(
 
 @router.delete(f"{ORG}/invitations/{{invitation_id}}", status_code=status.HTTP_204_NO_CONTENT)
 def revoke_invitation(invitation_id: uuid.UUID, admin: AdminOf, db: DbSession) -> None:
-    members.revoke_invitation(db, admin.organisation, invitation_id)
+    members.revoke_invitation(db, admin.organisation, admin.user, invitation_id)
 
 
 @router.patch(f"{ORG}/members/{{membership_id}}")
 def change_role(
     membership_id: uuid.UUID, body: RoleIn, admin: AdminOf, db: DbSession, user: CurrentUser
 ) -> MemberOut:
-    membership = members.change_role(db, admin.organisation, membership_id, body.role)
+    membership = members.change_role(db, admin.organisation, admin.user, membership_id, body.role)
     return member_out(membership, user)
 
 
 @router.delete(f"{ORG}/members/{{membership_id}}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_member(membership_id: uuid.UUID, admin: AdminOf, db: DbSession) -> None:
-    members.remove_member(db, admin.organisation, membership_id)
+    members.remove_member(db, admin.organisation, admin.user, membership_id)
 
 
 # --- Invitee endpoints. The token travels in the body, never the URL path or logs. ---

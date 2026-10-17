@@ -97,13 +97,13 @@ def update_organisation(
     body: OrganisationUpdateIn, membership: AdminOf, db: DbSession
 ) -> OrganisationOut:
     changes = {field: getattr(body, field) for field in body.model_fields_set}
-    service.update_organisation(db, membership.organisation, changes)
+    service.update_organisation(db, membership.organisation, membership.user, changes)
     return organisation_out(membership)
 
 
 @router.put("/{organisation_id}/slug")
 def change_slug(body: SlugIn, membership: AdminOf, db: DbSession) -> OrganisationOut:
-    service.change_slug(db, membership.organisation, body.slug)
+    service.change_slug(db, membership.organisation, membership.user, body.slug)
     return organisation_out(membership)
 
 
@@ -117,11 +117,13 @@ def upload_logo(
 ) -> OrganisationOut:
     # Read one byte past the limit so oversized files are detected without loading them fully.
     data = file.file.read(settings.logo_max_bytes + 1)
-    service.set_logo(db, membership.organisation, data, settings.logo_max_bytes, storage)
+    service.set_logo(
+        db, membership.organisation, membership.user, data, settings.logo_max_bytes, storage
+    )
     return organisation_out(membership)
 
 
 @router.delete("/{organisation_id}/logo")
 def remove_logo(membership: AdminOf, db: DbSession, storage: FileStorage) -> OrganisationOut:
-    service.remove_logo(db, membership.organisation, storage)
+    service.remove_logo(db, membership.organisation, membership.user, storage)
     return organisation_out(membership)

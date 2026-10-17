@@ -46,6 +46,8 @@ Implement stories one at a time, in the order in `docs/REVIEW.md` section E. For
   Public requests never see INTERNAL content, internal owners, members, questions or audit data (AC-03, AC-12).
 - Activation is always a manual admin action; record who and when, and write the audit event in the same
   transaction (decision A1). A failed version never replaces the active one (AC-04).
+- Every significant admin change calls `app.audit.record()` in the same transaction as the change (AC-08). Audit
+  events are append-only: no update/delete endpoints, and the database trigger rejects changes.
 - Never invent contacts, URLs, emails, phone numbers or citations. Only show configured data and evidence
   that was actually used (AC-07, AC-02).
 - Users see plain-English errors only; unexpected errors return an `error_id`, never a stack trace.
