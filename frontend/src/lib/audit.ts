@@ -30,6 +30,14 @@ const FIELD: Record<string, string> = {
   audience: "Audience",
   source: "Source",
   active_version: "Active version",
+  owner: "Policy owner",
+  help_route: "Public help route",
+  job_title: "Job title",
+  email: "Email",
+  phone: "Phone",
+  label: "Label",
+  destination: "Destination",
+  description: "Description",
 };
 const AUDIENCE: Record<string, string> = { INTERNAL: "Internal", PUBLIC: "Public", BOTH: "Both" };
 
@@ -107,6 +115,24 @@ export function describeEvent(e: AuditEvent): AuditDescription {
       return { summary: `superseded version ${e.previous?.version} of ${e.object_label}`, changes: [] };
     case "POLICY_PROCESSING_RETRIED":
       return { summary: `retried processing version ${e.previous?.version} of ${e.object_label}`, changes: [] };
+    case "POLICY_OWNER_CHANGED":
+      return { summary: `changed the policy owner of ${e.object_label}`, changes: diff(e) };
+    case "PUBLIC_HELP_ROUTE_CHANGED":
+      return { summary: `changed the public help route of ${e.object_label}`, changes: diff(e) };
+    case "CONTACT_CREATED":
+      return { summary: `added the policy owner ${e.object_label}`, changes: [] };
+    case "CONTACT_UPDATED":
+      return { summary: `updated the policy owner ${e.object_label}`, changes: diff(e) };
+    case "CONTACT_DELETED":
+      return { summary: `removed the policy owner ${e.object_label}`, changes: [] };
+    case "HELP_ROUTE_CREATED":
+      return { summary: `added the public help route ${e.object_label}`, changes: [] };
+    case "HELP_ROUTE_UPDATED":
+      return { summary: `updated the public help route ${e.object_label}`, changes: diff(e) };
+    case "HELP_ROUTE_DELETED":
+      return { summary: `removed the public help route ${e.object_label}`, changes: [] };
+    case "DEFAULT_HELP_ROUTE_CHANGED":
+      return { summary: `made ${e.object_label} the default public help route`, changes: [] };
     case "POLICY_EDITED":
       return { summary: `edited the policy ${e.object_label}`, changes: diff(e) };
     default:

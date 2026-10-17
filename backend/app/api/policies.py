@@ -30,6 +30,8 @@ class PolicyUploadForm(BaseModel):
     audience: Audience
     category: str
     source: str | None = None
+    owner_id: uuid.UUID | None = None
+    help_route_id: uuid.UUID | None = None
 
     _name = field_validator("name")(check_policy_name)
     _version = field_validator("version")(check_version_label)
@@ -130,7 +132,6 @@ class PolicyListItem(BaseModel):
     # The newest version that isn't live yet (e.g. awaiting approval), if any.
     pending_version: str | None = None
     pending_status: str | None = None
-    # Policy owners are configured in US-024.
     owner: str | None = None
 
 
@@ -174,6 +175,7 @@ def list_policies(
                 updated_at=p.updated_at,
                 pending_version=pending.version_label if show_pending else None,
                 pending_status=pending.status if show_pending else None,
+                owner=p.owner.name if p.owner else None,
             )
         )
     categories = (
@@ -197,6 +199,8 @@ def upload_policy(
     audience: Annotated[str, Form()] = "",
     category: Annotated[str, Form()] = "",
     source: Annotated[str, Form()] = "",
+    owner_id: Annotated[str, Form()] = "",
+    help_route_id: Annotated[str, Form()] = "",
     file: UploadFile | None = None,
 ) -> PolicyOut:
     # Validate the form fields with the same rules and per-field messages as JSON bodies.
@@ -209,6 +213,8 @@ def upload_policy(
                 "audience": audience or None,
                 "category": category,
                 "source": source,
+                "owner_id": owner_id or None,
+                "help_route_id": help_route_id or None,
             }
         )
     except ValidationError as exc:
@@ -232,6 +238,8 @@ def upload_policy(
             audience=form.audience,
             category=form.category,
             source=form.source,
+            owner_id=form.owner_id,
+            help_route_id=form.help_route_id,
         ),
         file.filename,
         data,
@@ -257,6 +265,8 @@ class PolicyEditIn(BaseModel):
     category: str | None = None
     audience: Audience | None = None
     source: str | None = None
+    owner_id: uuid.UUID | None = None
+    help_route_id: uuid.UUID | None = None
 
     @field_validator("name")
     @classmethod
@@ -271,6 +281,44 @@ class PolicyEditIn(BaseModel):
     _source = field_validator("source")(check_source)
 
 
+class ContactRef(BaseModel):
+    id: str
+    name: str
+    job_title: str | None = None
+    email: str | None = None
+    phone: str | None = None
+
+
+class HelpRouteRef(BaseModel):
+    id: str
+    label: str
+    route_type: str
+    destination: str
+    description: str | None = None
+
+
+def owner_ref(p: Policy) -> ContactRef | None:
+    o = p.owner
+    if o is None:
+        return None
+    return ContactRef(
+        id=str(o.id), name=o.name, job_title=o.job_title, email=o.email, phone=o.phone
+    )
+
+
+def route_ref(p: Policy) -> HelpRouteRef | None:
+    r = p.help_route
+    if r is None:
+        return None
+    return HelpRouteRef(
+        id=str(r.id),
+        label=r.label,
+        route_type=r.route_type,
+        destination=r.destination,
+        description=r.description,
+    )
+
+
 class PolicyDetailOut(PolicyOut):
     status: str
     version_count: int
@@ -281,9 +329,8 @@ class PolicyDetailOut(PolicyOut):
     versions: list[VersionOut]
     archived_at: datetime | None = None
     archived_by: str | None = None
-    # Configured in US-024.
-    owner: str | None = None
-    help_route: str | None = None
+    owner: ContactRef | None = None
+    help_route: HelpRouteRef | None = None
 
 
 def policy_detail_out(p: Policy, staff_view: bool = False) -> PolicyDetailOut:
@@ -298,6 +345,8 @@ def policy_detail_out(p: Policy, staff_view: bool = False) -> PolicyDetailOut:
         current_version=version_out(service.display_version(p)),
         active_version_id=str(active.id) if active else None,
         versions=[version_out(v) for v in versions],
+        owner=owner_ref(p),
+        help_route=route_ref(p),
         archived_at=p.archived_at,
         archived_by=p.archived_by.email if p.archived_by else None,
     )

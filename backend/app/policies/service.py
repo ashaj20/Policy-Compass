@@ -10,7 +10,16 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.audit import AuditAction, changed_fields, record
 from app.errors import AppError, NotFound, PermissionDenied
-from app.models import Audience, Organisation, Policy, PolicyVersion, User, VersionStatus
+from app.models import (
+    Audience,
+    HelpRoute,
+    Organisation,
+    Policy,
+    PolicyOwner,
+    PolicyVersion,
+    User,
+    VersionStatus,
+)
 from app.policies.validation import FileRejected, detect_policy_file, display_filename
 from app.storage import Storage
 
@@ -28,6 +37,8 @@ class PolicyUpload:
     audience: Audience
     category: str
     source: str | None
+    owner_id: object = None
+    help_route_id: object = None
 
 
 def touch(policy: Policy, when: datetime | None = None) -> datetime:
@@ -106,6 +117,14 @@ def upload_policy(
     )
     db.add(policy)
     db.flush()
+    # Contacts are checked before the file is stored, so a bad choice leaves nothing behind.
+    try:
+        assign_contacts(
+            db, policy, actor, {"owner_id": meta.owner_id, "help_route_id": meta.help_route_id}
+        )
+    except AppError:
+        db.rollback()
+        raise
 
     version = _store_version(
         db,
@@ -277,7 +296,15 @@ def edit_policy(db: Session, policy: Policy, actor: User, changes: dict) -> None
         f: str(getattr(policy, f)) if getattr(policy, f) else None for f in EDITABLE_POLICY_FIELDS
     }
     previous, new = changed_fields(before, after)
+    try:
+        contacts_changed = assign_contacts(db, policy, actor, changes)
+    except AppError:
+        db.rollback()
+        raise
     if not new:
+        if contacts_changed:
+            touch(policy)
+            db.commit()
         return
     touch(policy)
     record(
@@ -558,3 +585,92 @@ def retry_processing(db: Session, policy: Policy, version: PolicyVersion, actor:
         previous={"version": version.version_label, "reason": previous_reason},
     )
     db.commit()
+
+
+# --- Escalation contacts on policies (US-024) ---
+
+OWNER_AUDIENCES = (Audience.INTERNAL, Audience.BOTH)
+ROUTE_AUDIENCES = (Audience.PUBLIC, Audience.BOTH)
+
+
+def _contact_in_org(db: Session, model, contact_id, organisation_id, field: str, label: str):
+    contact = db.get(model, contact_id)
+    if contact is None or contact.organisation_id != organisation_id:
+        raise AppError(
+            422, "validation_error", "Please check the highlighted fields.", {field: label}
+        )
+    return contact
+
+
+def assign_contacts(db: Session, policy: Policy, actor: User, changes: dict) -> bool:
+    """Set or clear the policy owner and public help route, keeping them consistent with the
+    audience: owners only for Internal/Both, help routes only for Public/Both. Audited."""
+    changed = False
+    if "owner_id" in changes:
+        owner = None
+        if changes["owner_id"] is not None:
+            if policy.audience not in OWNER_AUDIENCES:
+                msg = "Public-only policies don't have an internal policy owner"
+                raise AppError(422, "validation_error", msg, {"owner_id": msg})
+            owner = _contact_in_org(
+                db,
+                PolicyOwner,
+                changes["owner_id"],
+                policy.organisation_id,
+                "owner_id",
+                "Choose a policy owner from your contacts",
+            )
+        changed |= _set_owner(db, policy, actor, owner)
+    if "help_route_id" in changes:
+        route = None
+        if changes["help_route_id"] is not None:
+            if policy.audience not in ROUTE_AUDIENCES:
+                msg = "Internal policies don't have a public help route"
+                raise AppError(422, "validation_error", msg, {"help_route_id": msg})
+            route = _contact_in_org(
+                db,
+                HelpRoute,
+                changes["help_route_id"],
+                policy.organisation_id,
+                "help_route_id",
+                "Choose a help route from your contacts",
+            )
+        changed |= _set_route(db, policy, actor, route)
+    # An audience change can make an existing assignment meaningless; clear it, audited.
+    if policy.audience not in OWNER_AUDIENCES and policy.owner_id is not None:
+        changed |= _set_owner(db, policy, actor, None)
+    if policy.audience not in ROUTE_AUDIENCES and policy.help_route_id is not None:
+        changed |= _set_route(db, policy, actor, None)
+    return changed
+
+
+def _set_owner(db: Session, policy: Policy, actor: User, owner: PolicyOwner | None) -> bool:
+    if policy.owner_id == (owner.id if owner else None):
+        return False
+    before = policy.owner.name if policy.owner else None
+    policy.owner = owner
+    _audit_policy(
+        db,
+        policy,
+        actor,
+        AuditAction.POLICY_OWNER_CHANGED,
+        previous={"owner": before},
+        new={"owner": owner.name if owner else None},
+    )
+    return True
+
+
+def _set_route(db: Session, policy: Policy, actor: User, route: HelpRoute | None) -> bool:
+    if policy.help_route_id == (route.id if route else None):
+        return False
+    before = policy.help_route.label if policy.help_route else None
+    policy.help_route = route
+    _audit_policy(
+        db,
+        policy,
+        actor,
+        AuditAction.PUBLIC_HELP_ROUTE_CHANGED,
+        previous={"help_route": before},
+        new={"help_route": route.label if route else None},
+    )
+    return True

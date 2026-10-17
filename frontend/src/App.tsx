@@ -7,6 +7,7 @@ import { LoginPage } from "./pages/auth/LoginPage";
 import { ResetPasswordPage } from "./pages/auth/ResetPasswordPage";
 import { SignupPage } from "./pages/auth/SignupPage";
 import { VerifyEmailPage } from "./pages/auth/VerifyEmailPage";
+import { ContactsPage } from "./pages/contacts/ContactsPage";
 import { InternalHomePage } from "./pages/InternalHomePage";
 import { PoliciesPage } from "./pages/policies/PoliciesPage";
 import { PolicyDetailPage } from "./pages/policies/PolicyDetailPage";
@@ -103,6 +104,16 @@ export function AppRoutes() {
           <RequireAuth>
             <RequireOrganisation>
               <PolicyDetailPage />
+            </RequireOrganisation>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/internal/contacts"
+        element={
+          <RequireAuth>
+            <RequireOrganisation>
+              <ContactsPage />
             </RequireOrganisation>
           </RequireAuth>
         }

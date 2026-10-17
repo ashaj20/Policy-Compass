@@ -63,7 +63,7 @@ describe("Policy detail", () => {
     expect(screen.getByText("Available to Policy Compass")).toBeInTheDocument();
     expect(screen.getByText("Approved by the Board, August 2026")).toBeInTheDocument();
     const escalation = screen.getByRole("region", { name: "Escalation" });
-    expect(within(escalation).getByText("Policy owner")).toBeInTheDocument();
+    expect(within(escalation).getByText("Policy owner (staff only)")).toBeInTheDocument();
     // Internal-only policies have no public help route.
     expect(within(escalation).queryByText("Public help route")).not.toBeInTheDocument();
     const download = within(screen.getByRole("region", { name: "Document" })).getByRole("link", { name: /Download/ });
@@ -111,6 +111,8 @@ describe("Policy detail", () => {
       category: "Maintenance",
       source: "Approved by the Board, August 2026",
       audience: "INTERNAL",
+      owner_id: null,
+      help_route_id: null,
     });
   });
 

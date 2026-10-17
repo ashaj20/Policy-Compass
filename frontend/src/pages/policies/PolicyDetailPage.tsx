@@ -19,6 +19,9 @@ import {
   type VersionStatus,
 } from "../../lib/policy";
 import { NewVersionDialog, VersionHistory } from "./VersionHistory";
+import { ContactCard, HelpRouteCard } from "../../components/ContactCard";
+import type { Contacts, HelpRoute, PolicyOwner } from "../../lib/contacts";
+import { ContactPicker } from "../contacts/ContactPicker";
 import { focusFirstError, hasErrors, type FieldErrors } from "../../lib/validation";
 
 interface PolicyDetail extends Policy {
@@ -29,8 +32,8 @@ interface PolicyDetail extends Policy {
   versions: PolicyVersion[];
   archived_at: string | null;
   archived_by: string | null;
-  owner: string | null;
-  help_route: string | null;
+  owner: PolicyOwner | null;
+  help_route: HelpRoute | null;
 }
 
 /** Whether Policy Compass can use this policy to answer questions, in plain words. */
@@ -258,14 +261,26 @@ export function PolicyDetailPage() {
           <dl className="pc-summary pc-summary--inline">
             {showOwner && (
               <div>
-                <dt>Policy owner</dt>
-                <dd>{policy.owner ?? <span className="pc-auth__muted">Not assigned</span>}</dd>
+                <dt>Policy owner (staff only)</dt>
+                <dd>
+                  {policy.owner ? (
+                    <ContactCard owner={policy.owner} />
+                  ) : (
+                    <span className="pc-auth__muted">Not assigned</span>
+                  )}
+                </dd>
               </div>
             )}
             {showHelpRoute && (
               <div>
                 <dt>Public help route</dt>
-                <dd>{policy.help_route ?? <span className="pc-auth__muted">Not assigned</span>}</dd>
+                <dd>
+                  {policy.help_route ? (
+                    <HelpRouteCard route={policy.help_route} />
+                  ) : (
+                    <span className="pc-auth__muted">Not assigned. Your default help route is used.</span>
+                  )}
+                </dd>
               </div>
             )}
           </dl>
@@ -359,6 +374,15 @@ function EditPolicyDialog({
   const [category, setCategory] = useState(policy.category);
   const [source, setSource] = useState(policy.source ?? "");
   const [audience, setAudience] = useState<Audience>(policy.audience);
+  const [ownerId, setOwnerId] = useState(policy.owner?.id ?? "");
+  const [routeId, setRouteId] = useState(policy.help_route?.id ?? "");
+  const [contacts, setContacts] = useState<Contacts>();
+
+  useEffect(() => {
+    api<Contacts>(`${base.split("/policies/")[0]}/contacts`)
+      .then(setContacts)
+      .catch(() => setContacts({ owners: [], help_routes: [] }));
+  }, [base]);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string>();
   const [saving, setSaving] = useState(false);
@@ -378,7 +402,14 @@ function EditPolicyDialog({
       onSaved(
         await api<PolicyDetail>(base, {
           method: "PATCH",
-          body: JSON.stringify({ name, category, source, audience }),
+          body: JSON.stringify({
+            name,
+            category,
+            source,
+            audience,
+            owner_id: audience !== "PUBLIC" && ownerId ? ownerId : null,
+            help_route_id: audience !== "INTERNAL" && routeId ? routeId : null,
+          }),
         }),
       );
     } catch (err) {
@@ -421,6 +452,24 @@ function EditPolicyDialog({
           onChange={(value) => setAudience(value as Audience)}
           error={errors.audience}
         />
+        {audience !== "PUBLIC" && contacts && (
+          <ContactPicker
+            kind="owner"
+            options={contacts.owners.map((o) => ({ value: o.id, label: o.job_title ? `${o.name} (${o.job_title})` : o.name }))}
+            value={ownerId}
+            onChange={setOwnerId}
+            error={errors.owner_id}
+          />
+        )}
+        {audience !== "INTERNAL" && contacts && (
+          <ContactPicker
+            kind="route"
+            options={contacts.help_routes.map((r) => ({ value: r.id, label: r.is_default ? `${r.label} (default)` : r.label }))}
+            value={routeId}
+            onChange={setRouteId}
+            error={errors.help_route_id}
+          />
+        )}
         {becomesPublic && (
           <Alert tone="warning" title="This policy will be used to answer public questions.">
             <p>Only make it public if everything in it is approved for customers and the public to see.</p>

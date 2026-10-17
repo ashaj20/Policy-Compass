@@ -18,6 +18,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
+from app.models.contact import HelpRoute, PolicyOwner
 from app.models.user import User
 
 
@@ -72,6 +73,13 @@ class Policy(Base):
         ForeignKey("users.id", ondelete="SET NULL")
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # Escalation contacts (US-024). The owner is internal-only; the help route is public-facing.
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("policy_owners.id", ondelete="SET NULL")
+    )
+    help_route_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("help_routes.id", ondelete="SET NULL")
+    )
     # Archived policies are never used for answers but stay visible to administrators (US-009).
     # Versions are left untouched, so restoring returns the policy to exactly its prior state.
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -87,6 +95,8 @@ class Policy(Base):
         back_populates="policy", order_by="PolicyVersion.uploaded_at"
     )
     archived_by: Mapped[User | None] = relationship(foreign_keys=[archived_by_id])
+    owner: Mapped["PolicyOwner | None"] = relationship()
+    help_route: Mapped["HelpRoute | None"] = relationship()
 
     @property
     def is_archived(self) -> bool:

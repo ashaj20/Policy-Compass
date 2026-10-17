@@ -5,6 +5,8 @@ import { AudienceBadge } from "../../components/AudienceBadge";
 import { FileDropzone } from "../../components/FileDropzone";
 import { ProcessingSteps } from "../../components/ProcessingSteps";
 import { RadioGroup } from "../../components/RadioGroup";
+import { ContactPicker } from "../contacts/ContactPicker";
+import type { Contacts } from "../../lib/contacts";
 import { StatusBadge } from "../../components/StatusBadge";
 import { VersionMeta } from "../../components/VersionMeta";
 import { api, ApiError, uploadWithProgress } from "../../lib/api";
@@ -42,6 +44,9 @@ export function UploadPolicyPage() {
   const [category, setCategory] = useState("");
   const [source, setSource] = useState("");
   const [categories, setCategories] = useState<string[]>([]);
+  const [contacts, setContacts] = useState<Contacts>();
+  const [ownerId, setOwnerId] = useState("");
+  const [routeId, setRouteId] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string>();
   const [progress, setProgress] = useState<number>();
@@ -54,7 +59,10 @@ export function UploadPolicyPage() {
     api<string[]>(`${base}/categories`)
       .then(setCategories)
       .catch(() => setCategories([]));
-  }, [base, isAdmin]);
+    api<Contacts>(`/organisations/${membership.organisation_id}/contacts`)
+      .then(setContacts)
+      .catch(() => setContacts({ owners: [], help_routes: [] }));
+  }, [base, isAdmin, membership.organisation_id]);
 
   // Follow processing after upload (US-012), until it finishes or fails.
   const [uploadedVersion, setUploadedVersion] = useState<PolicyVersion>();
@@ -122,6 +130,8 @@ export function UploadPolicyPage() {
     body.append("audience", audience);
     body.append("category", category);
     body.append("source", source);
+    if ((audience === "INTERNAL" || audience === "BOTH") && ownerId) body.append("owner_id", ownerId);
+    if ((audience === "PUBLIC" || audience === "BOTH") && routeId) body.append("help_route_id", routeId);
 
     setProgress(0);
     try {
@@ -149,6 +159,8 @@ export function UploadPolicyPage() {
     setAudience("");
     setCategory("");
     setSource("");
+    setOwnerId("");
+    setRouteId("");
     setErrors({});
   }
 
@@ -330,22 +342,22 @@ export function UploadPolicyPage() {
           />
 
           {showOwner && (
-            <div className="pc-upload__contact">
-              <p className="pc-field__label">Internal policy owner</p>
-              <p className="pc-field__hint">
-                Staff are directed to the policy owner when an answer can't be found. No policy owners have been set
-                up yet; you'll be able to assign one once contacts are added.
-              </p>
-            </div>
+            <ContactPicker
+              kind="owner"
+              options={contacts?.owners.map((o) => ({ value: o.id, label: o.job_title ? `${o.name} (${o.job_title})` : o.name })) ?? []}
+              value={ownerId}
+              onChange={setOwnerId}
+              error={errors.owner_id}
+            />
           )}
           {showHelpRoute && (
-            <div className="pc-upload__contact">
-              <p className="pc-field__label">Public help route</p>
-              <p className="pc-field__hint">
-                The public are directed to a help route when an answer can't be found. No public help routes have been
-                set up yet; you'll be able to choose one once they're added.
-              </p>
-            </div>
+            <ContactPicker
+              kind="route"
+              options={contacts?.help_routes.map((r) => ({ value: r.id, label: r.is_default ? `${r.label} (default)` : r.label })) ?? []}
+              value={routeId}
+              onChange={setRouteId}
+              error={errors.help_route_id}
+            />
           )}
         </section>
 
