@@ -29,6 +29,8 @@ class AuditAction(StrEnum):
     # Policies
     POLICY_UPLOADED = "POLICY_UPLOADED"
     POLICY_EDITED = "POLICY_EDITED"
+    POLICY_ARCHIVED = "POLICY_ARCHIVED"
+    POLICY_RESTORED = "POLICY_RESTORED"
 
 
 def record(

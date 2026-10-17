@@ -80,6 +80,10 @@ export function describeEvent(e: AuditEvent): AuditDescription {
         summary: `uploaded the policy ${e.object_label}${e.new?.version ? ` (version ${e.new.version})` : ""}`,
         changes: [],
       };
+    case "POLICY_ARCHIVED":
+      return { summary: `archived the policy ${e.object_label}`, changes: [] };
+    case "POLICY_RESTORED":
+      return { summary: `restored the policy ${e.object_label}`, changes: [] };
     case "POLICY_EDITED":
       return { summary: `edited the policy ${e.object_label}`, changes: diff(e) };
     default:

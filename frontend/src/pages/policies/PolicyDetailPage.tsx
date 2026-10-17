@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Alert, AppShell, Button, ErrorState, Input, Modal, PageHeader, Skeleton } from "../../components";
+import { Alert, AppShell, Button, ConfirmDialog, ErrorState, Input, Modal, PageHeader, Skeleton } from "../../components";
 import { AudienceBadge } from "../../components/AudienceBadge";
 import { RadioGroup } from "../../components/RadioGroup";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -21,6 +21,8 @@ import { focusFirstError, hasErrors, type FieldErrors } from "../../lib/validati
 interface PolicyDetail extends Policy {
   status: VersionStatus;
   version_count: number;
+  archived_at: string | null;
+  archived_by: string | null;
   owner: string | null;
   help_route: string | null;
 }
@@ -47,6 +49,9 @@ export function PolicyDetailPage() {
   const [error, setError] = useState<ApiError>();
   const [editing, setEditing] = useState(false);
   const [notice, setNotice] = useState<string>();
+  const [confirm, setConfirm] = useState<"archive" | "restore">();
+  const [confirmBusy, setConfirmBusy] = useState(false);
+  const [confirmError, setConfirmError] = useState<string>();
 
   const load = useCallback(async () => {
     setError(undefined);
@@ -91,6 +96,22 @@ export function PolicyDetailPage() {
     );
   }
 
+  async function onConfirm() {
+    if (!confirm) return;
+    setConfirmBusy(true);
+    setConfirmError(undefined);
+    try {
+      setPolicy(await api<PolicyDetail>(`${base}/${confirm}`, { method: "POST" }));
+      setNotice(confirm === "archive" ? "The policy has been archived." : "The policy has been restored.");
+      setConfirm(undefined);
+    } catch (err) {
+      setConfirmError((err as ApiError).message);
+    } finally {
+      setConfirmBusy(false);
+    }
+  }
+
+  const archived = Boolean(policy.archived_at);
   const v = policy.latest_version;
   const knowledge = KNOWLEDGE_STATUS[policy.status];
   const showOwner = policy.audience !== "PUBLIC";
@@ -103,9 +124,16 @@ export function PolicyDetailPage() {
         title={policy.name}
         actions={
           isAdmin && (
-            <Button variant="secondary" onClick={() => setEditing(true)}>
-              Edit policy
-            </Button>
+            <>
+              {!archived && (
+                <Button variant="ghost" onClick={() => setConfirm("archive")}>
+                  Archive policy
+                </Button>
+              )}
+              <Button variant="secondary" onClick={() => setEditing(true)}>
+                Edit policy
+              </Button>
+            </>
           )
         }
       />
@@ -115,6 +143,24 @@ export function PolicyDetailPage() {
       </div>
       <VersionMeta version={v.version} effectiveDate={v.effective_date} updatedAt={policy.updated_at} />
       {notice && <Alert tone="success" title={notice} />}
+      {archived && (
+        <Alert
+          tone="info"
+          title="This policy is archived and is no longer used to answer questions."
+          actions={
+            isAdmin && (
+              <Button variant="secondary" onClick={() => setConfirm("restore")}>
+                Restore policy
+              </Button>
+            )
+          }
+        >
+          <p>
+            Archived {formatLongDate(policy.archived_at!)}
+            {policy.archived_by ? ` by ${policy.archived_by}` : ""}.
+          </p>
+        </Alert>
+      )}
 
       <section className="pc-card" aria-labelledby="knowledge-heading">
         <h2 id="knowledge-heading" className="pc-card__title">
@@ -198,6 +244,29 @@ export function PolicyDetailPage() {
         </div>
       </section>
 
+      {confirm === "archive" && (
+        <ConfirmDialog
+          title="Archive this policy?"
+          message={<p>Archived policies will no longer be used to answer questions.</p>}
+          confirmLabel="Archive policy"
+          onConfirm={onConfirm}
+          onCancel={() => setConfirm(undefined)}
+          busy={confirmBusy}
+          error={confirmError}
+        />
+      )}
+      {confirm === "restore" && (
+        <ConfirmDialog
+          title="Restore this policy?"
+          message={<p>It will return to how it was before it was archived, including being used to answer questions if it was ready.</p>}
+          confirmLabel="Restore policy"
+          onConfirm={onConfirm}
+          onCancel={() => setConfirm(undefined)}
+          busy={confirmBusy}
+          error={confirmError}
+          destructive={false}
+        />
+      )}
       {editing && (
         <EditPolicyDialog
           policy={policy}

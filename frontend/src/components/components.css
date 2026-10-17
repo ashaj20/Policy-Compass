@@ -1117,3 +1117,8 @@ a.pc-button {
   align-items: center;
   gap: var(--pc-space-3);
 }
+.pc-page-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pc-space-2);
+}

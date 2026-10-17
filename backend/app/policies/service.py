@@ -144,7 +144,9 @@ def latest_version(policy: Policy) -> PolicyVersion:
 
 
 def display_status(policy: Policy) -> str:
-    """The status shown for a policy: its newest version's status (refined by versioning)."""
+    """The status shown for a policy: Archived if archived, else its newest version's status."""
+    if policy.is_archived:
+        return VersionStatus.ARCHIVED
     return latest_version(policy).status
 
 
@@ -245,3 +247,52 @@ def get_version(policy: Policy, version_id) -> PolicyVersion:
         if str(v.id) == str(version_id):
             return v
     raise NotFound("This document is no longer available.")
+
+
+def _audit_policy(db: Session, policy: Policy, actor: User, action: AuditAction, **kw) -> None:
+    record(
+        db,
+        organisation_id=policy.organisation_id,
+        actor=actor,
+        action=action,
+        object_type="policy",
+        object_id=policy.id,
+        object_label=policy.name,
+        **kw,
+    )
+
+
+def archive_policy(db: Session, policy: Policy, actor: User) -> None:
+    """Stop using a policy for answers without deleting anything (US-009)."""
+    if policy.is_archived:
+        raise AppError(409, "already_archived", "This policy is already archived.")
+    previous_status = display_status(policy)
+    policy.archived_at = touch(policy)
+    policy.archived_by_id = actor.id
+    _audit_policy(
+        db,
+        policy,
+        actor,
+        AuditAction.POLICY_ARCHIVED,
+        previous={"status": str(previous_status)},
+        new={"status": str(VersionStatus.ARCHIVED)},
+    )
+    db.commit()
+
+
+def restore_policy(db: Session, policy: Policy, actor: User) -> None:
+    """Bring an archived policy back exactly as it was before archiving."""
+    if not policy.is_archived:
+        raise AppError(409, "not_archived", "This policy isn't archived.")
+    policy.archived_at = None
+    policy.archived_by_id = None
+    touch(policy)
+    _audit_policy(
+        db,
+        policy,
+        actor,
+        AuditAction.POLICY_RESTORED,
+        previous={"status": str(VersionStatus.ARCHIVED)},
+        new={"status": str(latest_version(policy).status)},
+    )
+    db.commit()

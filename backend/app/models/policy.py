@@ -63,6 +63,12 @@ class Policy(Base):
         ForeignKey("users.id", ondelete="SET NULL")
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # Archived policies are never used for answers but stay visible to administrators (US-009).
+    # Versions are left untouched, so restoring returns the policy to exactly its prior state.
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    archived_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
     # When the policy or any of its versions last changed (US-008). Set by the service layer.
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.clock_timestamp()
@@ -71,6 +77,11 @@ class Policy(Base):
     versions: Mapped[list["PolicyVersion"]] = relationship(
         back_populates="policy", order_by="PolicyVersion.uploaded_at"
     )
+    archived_by: Mapped[User | None] = relationship(foreign_keys=[archived_by_id])
+
+    @property
+    def is_archived(self) -> bool:
+        return self.archived_at is not None
 
 
 class PolicyVersion(Base):

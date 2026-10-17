@@ -230,6 +230,8 @@ class PolicyEditIn(BaseModel):
 class PolicyDetailOut(PolicyOut):
     status: str
     version_count: int
+    archived_at: datetime | None = None
+    archived_by: str | None = None
     # Configured in US-024.
     owner: str | None = None
     help_route: str | None = None
@@ -240,6 +242,8 @@ def policy_detail_out(p: Policy) -> PolicyDetailOut:
         **policy_out(p).model_dump(),
         status=service.display_status(p),
         version_count=len(p.versions),
+        archived_at=p.archived_at,
+        archived_by=p.archived_by.email if p.archived_by else None,
     )
 
 
@@ -292,3 +296,19 @@ def download_version(
             "Cache-Control": "private, no-store",
         },
     )
+
+
+@router.post("/{policy_id}/archive")
+def archive_policy(policy_id: uuid.UUID, admin: AdminOf, db: DbSession) -> PolicyDetailOut:
+    policy = service.get_policy(db, admin.organisation, policy_id, staff_view=False)
+    service.archive_policy(db, policy, admin.user)
+    db.refresh(policy)
+    return policy_detail_out(policy)
+
+
+@router.post("/{policy_id}/restore")
+def restore_policy(policy_id: uuid.UUID, admin: AdminOf, db: DbSession) -> PolicyDetailOut:
+    policy = service.get_policy(db, admin.organisation, policy_id, staff_view=False)
+    service.restore_policy(db, policy, admin.user)
+    db.refresh(policy)
+    return policy_detail_out(policy)

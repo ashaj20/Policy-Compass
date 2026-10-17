@@ -26,6 +26,8 @@ const detail = {
   version_count: 1,
   owner: null,
   help_route: null,
+  archived_at: null as string | null,
+  archived_by: null as string | null,
   latest_version: {
     id: "v1",
     version: "3.2",
@@ -186,5 +188,58 @@ describe("Policy detail", () => {
     renderApp("/internal/policies");
     await userEvent.click(await screen.findByRole("link", { name: "Emergency Repairs Policy" }));
     expect(await screen.findByText("Available to Policy Compass")).toBeInTheDocument();
+  });
+
+  it("archives after confirmation", async () => {
+    let archived = false;
+    mockApi({
+      "GET /auth/me": () => ({ status: 200, body: admin }),
+      [`GET ${BASE}`]: () => ({ status: 200, body: detail }),
+      [`POST ${BASE}/archive`]: () => {
+        archived = true;
+        return {
+          status: 200,
+          body: { ...detail, status: "ARCHIVED", archived_at: "2026-10-17T12:00:00Z", archived_by: "jane@example.org" },
+        };
+      },
+    });
+    renderApp("/internal/policies/p1");
+    await userEvent.click(await screen.findByRole("button", { name: "Archive policy" }));
+    const dialog = screen.getByRole("dialog", { name: "Archive this policy?" });
+    expect(dialog).toHaveTextContent("Archived policies will no longer be used to answer questions.");
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toHaveFocus();
+    expect(archived).toBe(false);
+    await userEvent.click(within(dialog).getByRole("button", { name: "Archive policy" }));
+
+    expect(await screen.findByText("The policy has been archived.")).toBeInTheDocument();
+    expect(screen.getByText("This policy is archived and is no longer used to answer questions.")).toBeInTheDocument();
+    expect(screen.getByText(/^Archived .* by jane@example.org\.$/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Archive policy" })).not.toBeInTheDocument();
+  });
+
+  it("restores an archived policy", async () => {
+    mockApi({
+      "GET /auth/me": () => ({ status: 200, body: admin }),
+      [`GET ${BASE}`]: () => ({
+        status: 200,
+        body: { ...detail, status: "ARCHIVED", archived_at: "2026-10-17T12:00:00Z", archived_by: "jane@example.org" },
+      }),
+      [`POST ${BASE}/restore`]: () => ({ status: 200, body: detail }),
+    });
+    renderApp("/internal/policies/p1");
+    await userEvent.click(await screen.findByRole("button", { name: "Restore policy" }));
+    await userEvent.click(within(screen.getByRole("dialog", { name: "Restore this policy?" })).getByRole("button", { name: "Restore policy" }));
+    expect(await screen.findByText("The policy has been restored.")).toBeInTheDocument();
+    expect(screen.getByText("Available to Policy Compass")).toBeInTheDocument();
+  });
+
+  it("shows no archive controls to staff", async () => {
+    mockApi({
+      "GET /auth/me": () => ({ status: 200, body: staff }),
+      [`GET ${BASE}`]: () => ({ status: 200, body: detail }),
+    });
+    renderApp("/internal/policies/p1");
+    await screen.findByRole("heading", { name: "Emergency Repairs Policy" });
+    expect(screen.queryByRole("button", { name: "Archive policy" })).not.toBeInTheDocument();
   });
 });
