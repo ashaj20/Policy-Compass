@@ -71,3 +71,23 @@ def set_logo(
     db.commit()
     if old_key:
         storage.delete(old_key)
+
+
+EDITABLE_FIELDS = {"name", "website"}
+
+
+def update_organisation(db: Session, organisation: Organisation, changes: dict) -> None:
+    """Apply already-validated changes to the organisation's basic details (US-004)."""
+    for field, value in changes.items():
+        if field in EDITABLE_FIELDS:
+            setattr(organisation, field, value)
+    db.commit()
+
+
+def remove_logo(db: Session, organisation: Organisation, storage: Storage) -> None:
+    old_key = organisation.logo_key
+    organisation.logo_key = None
+    organisation.logo_content_type = None
+    db.commit()
+    if old_key:
+        storage.delete(old_key)

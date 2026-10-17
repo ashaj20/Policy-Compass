@@ -10,6 +10,7 @@ import { VerifyEmailPage } from "./pages/auth/VerifyEmailPage";
 import { InternalHomePage } from "./pages/InternalHomePage";
 import { PublicOrganisationPage } from "./pages/public/PublicOrganisationPage";
 import { MembersPage } from "./pages/settings/MembersPage";
+import { OrganisationSettingsPage } from "./pages/settings/OrganisationSettingsPage";
 import { CreateOrganisationPage } from "./pages/setup/CreateOrganisationPage";
 
 export function AppRoutes() {
@@ -38,6 +39,16 @@ export function AppRoutes() {
           <RequireAuth>
             <RequireOrganisation>
               <InternalHomePage />
+            </RequireOrganisation>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/internal/settings"
+        element={
+          <RequireAuth>
+            <RequireOrganisation>
+              <OrganisationSettingsPage />
             </RequireOrganisation>
           </RequireAuth>
         }

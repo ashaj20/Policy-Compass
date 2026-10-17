@@ -4,10 +4,8 @@ import { Alert, AuthLayout, Button, Input } from "../../components";
 import { api, ApiError } from "../../lib/api";
 import { currentMembership, useAuth } from "../../lib/auth";
 import { publicUrl, slugify, validateSlug } from "../../lib/slug";
+import { LOGO_ACCEPT, validateLogo, validateOrganisationName, validateWebsite } from "../../lib/organisation";
 import { focusFirstError, hasErrors, type FieldErrors } from "../../lib/validation";
-
-const LOGO_MAX_BYTES = 2 * 1024 * 1024;
-const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
 
 interface Organisation {
   id: string;
@@ -15,26 +13,6 @@ interface Organisation {
 }
 
 type SlugStatus = { state: "idle" | "checking" } | { state: "available" } | { state: "unavailable"; message: string };
-
-function validateName(value: string): string | undefined {
-  const v = value.trim();
-  if (!v) return "Enter your organisation's name";
-  if (v.length < 2) return "Use at least 2 characters";
-  if (v.length > 100) return "Use no more than 100 characters";
-}
-
-function validateWebsite(value: string): string | undefined {
-  const v = value.trim();
-  if (!v) return;
-  const withScheme = v.includes("://") ? v : `https://${v}`;
-  try {
-    const url = new URL(withScheme);
-    if (!["http:", "https:"].includes(url.protocol) || !url.hostname.includes(".") || v.includes(" ")) throw new Error();
-  } catch {
-    return "Enter a valid website address, like https://www.organisation.org";
-  }
-}
-
 function formatSize(bytes: number): string {
   return bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
@@ -92,12 +70,9 @@ export function CreateOrganisationPage() {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (!LOGO_TYPES.includes(file.type)) {
-      setErrors((prev) => ({ ...prev, logo: "The logo must be a PNG, JPEG or WebP image." }));
-      return;
-    }
-    if (file.size > LOGO_MAX_BYTES) {
-      setErrors((prev) => ({ ...prev, logo: "The logo must be 2 MB or smaller." }));
+    const problem = validateLogo(file);
+    if (problem) {
+      setErrors((prev) => ({ ...prev, logo: problem }));
       return;
     }
     setErrors((prev) => ({ ...prev, logo: undefined }));
@@ -114,7 +89,7 @@ export function CreateOrganisationPage() {
     e.preventDefault();
     setFormError(undefined);
     const found: FieldErrors = {
-      name: validateName(name),
+      name: validateOrganisationName(name),
       website: validateWebsite(website),
       slug: validateSlug(slug) ?? (slugStatus.state === "unavailable" ? slugStatus.message : undefined),
       logo: errors.logo,
@@ -238,7 +213,7 @@ export function CreateOrganisationPage() {
               Upload logo
               <input
                 type="file"
-                accept="image/png,image/jpeg,image/webp"
+                accept={LOGO_ACCEPT}
                 className="visually-hidden"
                 onChange={onLogoChange}
                 aria-invalid={errors.logo ? true : undefined}

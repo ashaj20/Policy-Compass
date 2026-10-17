@@ -21,6 +21,20 @@ class OrganisationIn(BaseModel):
     _website = field_validator("website")(check_website)
 
 
+class OrganisationUpdateIn(BaseModel):
+    """Only the fields sent are changed. Send website as "" or null to clear it."""
+
+    name: str | None = None
+    website: str | None = None
+
+    @field_validator("name")
+    @classmethod
+    def valid_name(cls, v: str | None) -> str:
+        return check_name(v or "")
+
+    _website = field_validator("website")(check_website)
+
+
 class OrganisationOut(BaseModel):
     id: str
     name: str
@@ -72,6 +86,15 @@ def get_organisation(membership: MemberOf) -> OrganisationOut:
     return organisation_out(membership)
 
 
+@router.patch("/{organisation_id}")
+def update_organisation(
+    body: OrganisationUpdateIn, membership: AdminOf, db: DbSession
+) -> OrganisationOut:
+    changes = {field: getattr(body, field) for field in body.model_fields_set}
+    service.update_organisation(db, membership.organisation, changes)
+    return organisation_out(membership)
+
+
 @router.put("/{organisation_id}/logo")
 def upload_logo(
     file: UploadFile,
@@ -83,4 +106,10 @@ def upload_logo(
     # Read one byte past the limit so oversized files are detected without loading them fully.
     data = file.file.read(settings.logo_max_bytes + 1)
     service.set_logo(db, membership.organisation, data, settings.logo_max_bytes, storage)
+    return organisation_out(membership)
+
+
+@router.delete("/{organisation_id}/logo")
+def remove_logo(membership: AdminOf, db: DbSession, storage: FileStorage) -> OrganisationOut:
+    service.remove_logo(db, membership.organisation, storage)
     return organisation_out(membership)

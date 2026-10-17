@@ -18,7 +18,13 @@ interface NavGroup {
 // Only pages that exist are listed; the navigation grows as stories are built (Spec §27).
 const NAV: NavGroup[] = [
   { items: [{ to: "/internal", label: "Home", end: true }] },
-  { label: "Settings", items: [{ to: "/internal/settings/members", label: "Members", adminOnly: true }] },
+  {
+    label: "Settings",
+    items: [
+      { to: "/internal/settings", label: "Organisation", end: true },
+      { to: "/internal/settings/members", label: "Members", adminOnly: true },
+    ],
+  },
 ];
 
 /** Internal application layout: sidebar navigation, top bar and main content area. */
