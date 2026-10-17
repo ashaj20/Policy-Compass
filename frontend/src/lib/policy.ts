@@ -3,6 +3,15 @@
 export type Audience = "INTERNAL" | "PUBLIC" | "BOTH";
 export type VersionStatus = "DRAFT" | "PROCESSING" | "READY" | "SUPERSEDED" | "ARCHIVED" | "FAILED";
 
+export const STATUS_LABELS: Record<VersionStatus, string> = {
+  DRAFT: "Draft",
+  PROCESSING: "Processing",
+  READY: "Ready",
+  SUPERSEDED: "Superseded",
+  ARCHIVED: "Archived",
+  FAILED: "Failed",
+};
+
 export interface PolicyVersion {
   id: string;
   version: string;

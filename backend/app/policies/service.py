@@ -6,7 +6,7 @@ from datetime import UTC, date, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.audit import AuditAction, record
 from app.errors import AppError
@@ -129,3 +129,51 @@ def categories(db: Session, organisation: Organisation) -> list[str]:
             .order_by(Policy.category)
         )
     )
+
+
+@dataclass
+class PolicyFilters:
+    audience: Audience | None = None
+    status: VersionStatus | None = None
+    category: str | None = None
+    search: str | None = None
+
+
+def latest_version(policy: Policy) -> PolicyVersion:
+    return policy.versions[-1]
+
+
+def display_status(policy: Policy) -> str:
+    """The status shown for a policy: its newest version's status (refined by versioning)."""
+    return latest_version(policy).status
+
+
+def list_policies(
+    db: Session, organisation: Organisation, filters: PolicyFilters, staff_view: bool
+) -> list[Policy]:
+    """Policies in one organisation, newest version status included.
+
+    Staff only see policies that are ready to use; drafts, processing and failed uploads are
+    not approved knowledge yet and stay visible to administrators only.
+    """
+    query = (
+        select(Policy)
+        .where(Policy.organisation_id == organisation.id)
+        .options(selectinload(Policy.versions))
+        .order_by(func.lower(Policy.name))
+    )
+    if filters.audience:
+        query = query.where(Policy.audience == filters.audience)
+    if filters.category:
+        query = query.where(func.lower(Policy.category) == filters.category.lower())
+    if filters.search:
+        term = f"%{filters.search.strip().lower()}%"
+        query = query.where(
+            func.lower(Policy.name).like(term) | func.lower(Policy.category).like(term)
+        )
+    policies = list(db.scalars(query.limit(1000)))
+
+    wanted = VersionStatus.READY if staff_view else filters.status
+    if wanted:
+        policies = [p for p in policies if display_status(p) == wanted]
+    return policies

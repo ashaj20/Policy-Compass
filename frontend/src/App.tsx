@@ -8,6 +8,7 @@ import { ResetPasswordPage } from "./pages/auth/ResetPasswordPage";
 import { SignupPage } from "./pages/auth/SignupPage";
 import { VerifyEmailPage } from "./pages/auth/VerifyEmailPage";
 import { InternalHomePage } from "./pages/InternalHomePage";
+import { PoliciesPage } from "./pages/policies/PoliciesPage";
 import { UploadPolicyPage } from "./pages/policies/UploadPolicyPage";
 import { PublicOrganisationPage } from "./pages/public/PublicOrganisationPage";
 import { ActivityPage } from "./pages/settings/ActivityPage";
@@ -71,6 +72,16 @@ export function AppRoutes() {
           <RequireAuth>
             <RequireOrganisation>
               <ActivityPage />
+            </RequireOrganisation>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/internal/policies"
+        element={
+          <RequireAuth>
+            <RequireOrganisation>
+              <PoliciesPage />
             </RequireOrganisation>
           </RequireAuth>
         }

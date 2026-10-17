@@ -157,8 +157,8 @@ export function UploadPolicyPage() {
           </p>
           <div className="pc-logo-setting__buttons">
             <Button onClick={reset}>Upload another policy</Button>
-            <Button variant="secondary" onClick={() => navigate("/internal")}>
-              Back to home
+            <Button variant="secondary" onClick={() => navigate("/internal/policies")}>
+              Back to policies
             </Button>
           </div>
         </section>
@@ -172,8 +172,8 @@ export function UploadPolicyPage() {
 
   return (
     <AppShell>
-      <Link to="/internal" className="pc-back-link">
-        ← Back
+      <Link to="/internal/policies" className="pc-back-link">
+        ← Back to policies
       </Link>
       <PageHeader title="Upload policy" description="Add an approved policy, procedure or guidance document." />
       <form ref={formRef} onSubmit={onSubmit} noValidate className="pc-upload">
@@ -291,7 +291,7 @@ export function UploadPolicyPage() {
         )}
 
         <div className="pc-upload__actions">
-          <Button variant="secondary" onClick={() => navigate("/internal")} disabled={uploading}>
+          <Button variant="secondary" onClick={() => navigate("/internal/policies")} disabled={uploading}>
             Cancel
           </Button>
           <Button type="submit" loading={uploading}>

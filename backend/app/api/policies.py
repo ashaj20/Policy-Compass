@@ -7,9 +7,9 @@ from fastapi import APIRouter, Form, UploadFile, status
 from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, ValidationError, field_validator
 
-from app.deps import AdminOf, AppSettings, DbSession, FileStorage
+from app.deps import AdminOf, AppSettings, DbSession, FileStorage, MemberOf
 from app.errors import AppError
-from app.models import Audience, Policy, PolicyVersion
+from app.models import Audience, Policy, PolicyVersion, Role, VersionStatus
 from app.policies import service
 from app.policies.validation import (
     check_category,
@@ -83,6 +83,63 @@ def policy_out(p: Policy) -> PolicyOut:
         updated_at=p.updated_at,
         latest_version=version_out(p.versions[-1]),
     )
+
+
+class PolicyListItem(BaseModel):
+    id: str
+    name: str
+    category: str
+    audience: Audience
+    status: str
+    version: str
+    effective_date: date
+    updated_at: datetime
+    # Policy owners are configured in US-024.
+    owner: str | None = None
+
+
+class PolicyListOut(BaseModel):
+    policies: list[PolicyListItem]
+    categories: list[str]
+
+
+@router.get("")
+def list_policies(
+    membership: MemberOf,
+    db: DbSession,
+    audience: Audience | None = None,
+    status: VersionStatus | None = None,
+    category: str | None = None,
+    q: str | None = None,
+) -> PolicyListOut:
+    staff_view = membership.role != Role.ADMIN
+    policies = service.list_policies(
+        db,
+        membership.organisation,
+        service.PolicyFilters(audience=audience, status=status, category=category, search=q),
+        staff_view=staff_view,
+    )
+    items = []
+    for p in policies:
+        v = service.latest_version(p)
+        items.append(
+            PolicyListItem(
+                id=str(p.id),
+                name=p.name,
+                category=p.category,
+                audience=p.audience,
+                status=service.display_status(p),
+                version=v.version_label,
+                effective_date=v.effective_date,
+                updated_at=p.updated_at,
+            )
+        )
+    categories = (
+        sorted({i.category for i in items})
+        if staff_view
+        else service.categories(db, membership.organisation)
+    )
+    return PolicyListOut(policies=items, categories=categories)
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)

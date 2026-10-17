@@ -158,6 +158,8 @@ Public questions store no IP address and no user identifier. Only a random sessi
 ---
 
 ## E. Proposed revised build order
+
+> **Order change agreed 17 Oct 2026:** after US-008, build US-022 (policy list) and US-023 (policy detail) next, so archive/restore (US-009) and versioning (US-010A) have their buttons in the right place. Then continue with US-009, US-010A, US-011 onwards. US-021 (dashboard) and the rest of Epic 5 stay in their original place.
 Stories run in order as the Story Design requires. **New/extended items are in bold.**
 
 1. **Foundations:** repo, FastAPI + React + Postgres, design tokens, component library base, CI, test harness
