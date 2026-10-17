@@ -7,6 +7,7 @@ that is rolled back afterwards, so tests are isolated and fast.
 
 import os
 from collections.abc import Iterator
+from datetime import UTC, datetime
 
 import pytest
 from alembic.config import Config
@@ -22,9 +23,12 @@ TEST_DATABASE_URL = os.environ.get(
 os.environ["PC_DATABASE_URL"] = TEST_DATABASE_URL
 os.environ.setdefault("PC_ENVIRONMENT", "test")
 
+from app.auth.security import hash_password  # noqa: E402
 from app.db import get_db  # noqa: E402
 from app.email import MemoryEmailSender, get_email_sender  # noqa: E402
 from app.main import create_app  # noqa: E402
+from app.models import User  # noqa: E402
+from app.storage import LocalStorage, get_storage  # noqa: E402
 
 
 @pytest.fixture(scope="session")
@@ -58,10 +62,16 @@ def mailer() -> MemoryEmailSender:
 
 
 @pytest.fixture
-def app(db, mailer):
+def storage(tmp_path) -> LocalStorage:
+    return LocalStorage(tmp_path / "storage")
+
+
+@pytest.fixture
+def app(db, mailer, storage):
     app = create_app()
     app.dependency_overrides[get_db] = lambda: db
     app.dependency_overrides[get_email_sender] = lambda: mailer
+    app.dependency_overrides[get_storage] = lambda: storage
     return app
 
 
@@ -69,3 +79,37 @@ def app(db, mailer):
 def client(app) -> Iterator[TestClient]:
     with TestClient(app, raise_server_exceptions=False) as c:
         yield c
+
+
+TEST_PASSWORD = "correct horse battery"
+
+
+def sign_in_new_user(db, client: TestClient, email: str) -> None:
+    """Create a verified user directly in the database and sign them in on this client."""
+    db.add(
+        User(
+            email=email,
+            password_hash=hash_password(TEST_PASSWORD),
+            email_verified_at=datetime.now(UTC),
+        )
+    )
+    db.flush()
+    resp = client.post("/api/auth/login", json={"email": email, "password": TEST_PASSWORD})
+    assert resp.status_code == 200, resp.text
+
+
+@pytest.fixture
+def make_client(app, db):
+    """Create a separate browser (own cookies), optionally signed in as a new verified user."""
+    clients: list[TestClient] = []
+
+    def make(email: str | None = None) -> TestClient:
+        c = TestClient(app, raise_server_exceptions=False)
+        clients.append(c)
+        if email:
+            sign_in_new_user(db, c, email)
+        return c
+
+    yield make
+    for c in clients:
+        c.close()

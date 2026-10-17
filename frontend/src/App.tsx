@@ -1,5 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { AuthProvider, RequireAuth } from "./lib/auth";
+import { AuthProvider, RequireAuth, RequireOrganisation, SETUP_PATH } from "./lib/auth";
 import { CheckEmailPage } from "./pages/auth/CheckEmailPage";
 import { ForgotPasswordPage } from "./pages/auth/ForgotPasswordPage";
 import { LoginPage } from "./pages/auth/LoginPage";
@@ -7,6 +7,8 @@ import { ResetPasswordPage } from "./pages/auth/ResetPasswordPage";
 import { SignupPage } from "./pages/auth/SignupPage";
 import { VerifyEmailPage } from "./pages/auth/VerifyEmailPage";
 import { InternalHomePage } from "./pages/InternalHomePage";
+import { PublicOrganisationPage } from "./pages/public/PublicOrganisationPage";
+import { CreateOrganisationPage } from "./pages/setup/CreateOrganisationPage";
 
 export function AppRoutes() {
   return (
@@ -18,11 +20,22 @@ export function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/p/:slug" element={<PublicOrganisationPage />} />
+      <Route
+        path={SETUP_PATH}
+        element={
+          <RequireAuth>
+            <CreateOrganisationPage />
+          </RequireAuth>
+        }
+      />
       <Route
         path="/internal"
         element={
           <RequireAuth>
-            <InternalHomePage />
+            <RequireOrganisation>
+              <InternalHomePage />
+            </RequireOrganisation>
           </RequireAuth>
         }
       />

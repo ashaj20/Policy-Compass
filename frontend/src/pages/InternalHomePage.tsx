@@ -1,14 +1,18 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Alert, AuthLayout, Button } from "../components";
-import { useAuth } from "../lib/auth";
+import { currentMembership, useAuth } from "../lib/auth";
+
+const ROLE_LABELS = { ADMIN: "Administrator", STAFF: "Staff member" } as const;
 
 /**
- * Temporary signed-in page. A new account has no organisation access until a membership exists;
- * US-002 replaces this with organisation setup and US-021 with the dashboard.
+ * Temporary signed-in home until the dashboard (US-021). Shows the organisation the person
+ * belongs to and its public page.
  */
 export function InternalHomePage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const state = useLocation().state as { created?: boolean; notice?: string } | null;
+  const membership = currentMembership(user)!;
 
   async function onSignOut() {
     await logout();
@@ -16,14 +20,27 @@ export function InternalHomePage() {
   }
 
   return (
-    <AuthLayout title="You're signed in">
-      <p>
-        Signed in as <strong>{user?.email}</strong>.
-      </p>
-      <Alert tone="info" title="You're not part of an organisation yet.">
-        <p>Organisation setup is the next step and will appear here soon.</p>
-      </Alert>
-      <Button variant="secondary" onClick={onSignOut} className="pc-auth__submit pc-auth__spaced">
+    <AuthLayout title={membership.organisation_name}>
+      {state?.created && <Alert tone="success" title="Your organisation has been created." />}
+      {state?.notice && <Alert tone="warning" title={state.notice} />}
+      <dl className="pc-summary">
+        <div>
+          <dt>Signed in as</dt>
+          <dd>{user?.email}</dd>
+        </div>
+        <div>
+          <dt>Your role</dt>
+          <dd>{ROLE_LABELS[membership.role]}</dd>
+        </div>
+        <div>
+          <dt>Public page</dt>
+          <dd>
+            <Link to={`/p/${membership.organisation_slug}`}>/p/{membership.organisation_slug}</Link>
+          </dd>
+        </div>
+      </dl>
+      <p className="pc-auth__muted">The dashboard and policy tools will appear here as they're built.</p>
+      <Button variant="secondary" onClick={onSignOut} className="pc-auth__submit">
         Sign out
       </Button>
     </AuthLayout>

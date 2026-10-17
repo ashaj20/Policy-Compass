@@ -10,6 +10,7 @@ from pydantic import BaseModel, ValidationInfo, field_validator
 from app.auth import service
 from app.auth.validation import check_password, normalise_email
 from app.deps import SESSION_COOKIE, AppSettings, CurrentUser, DbSession, Mailer, SessionToken
+from app.organisations.service import memberships_for
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -68,13 +69,34 @@ class MessageOut(BaseModel):
     message: str
 
 
+class MembershipOut(BaseModel):
+    organisation_id: str
+    organisation_name: str
+    organisation_slug: str
+    role: str
+
+
 class UserOut(BaseModel):
     id: str
     email: str
+    # Organisation access comes only from memberships; a new user has none.
+    memberships: list[MembershipOut]
 
 
-def _user_out(user) -> UserOut:
-    return UserOut(id=str(user.id), email=user.email)
+def _user_out(db, user) -> UserOut:
+    return UserOut(
+        id=str(user.id),
+        email=user.email,
+        memberships=[
+            MembershipOut(
+                organisation_id=str(m.organisation_id),
+                organisation_name=m.organisation.name,
+                organisation_slug=m.organisation.slug,
+                role=m.role,
+            )
+            for m in memberships_for(db, user)
+        ],
+    )
 
 
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
@@ -111,7 +133,7 @@ def login(body: LoginIn, response: Response, db: DbSession, settings: AppSetting
         samesite="lax",
         path="/",
     )
-    return _user_out(signed_in.user)
+    return _user_out(db, signed_in.user)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -123,8 +145,8 @@ def logout(response: Response, db: DbSession, settings: AppSettings, token: Sess
 
 
 @router.get("/me")
-def me(user: CurrentUser) -> UserOut:
-    return _user_out(user)
+def me(user: CurrentUser, db: DbSession) -> UserOut:
+    return _user_out(db, user)
 
 
 @router.post("/password-reset/request", status_code=status.HTTP_202_ACCEPTED)

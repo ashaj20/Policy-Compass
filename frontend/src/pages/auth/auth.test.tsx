@@ -6,7 +6,7 @@ import { mockApi, renderApp, unauthenticated } from "../../test/utils";
 
 afterEach(() => vi.restoreAllMocks());
 
-const user = { id: "u1", email: "jane.smith@example.org" };
+const user = { id: "u1", email: "jane.smith@example.org", memberships: [] };
 
 describe("Sign up", () => {
   it("shows field errors without calling the API when the form is invalid", async () => {
@@ -120,22 +120,18 @@ describe("Sign in", () => {
     expect(await screen.findByText(/We've sent a new verification link/)).toBeInTheDocument();
   });
 
-  it("signs in, then signs out", async () => {
+  it("signs in and sends people without an organisation to setup", async () => {
     mockApi({
       "GET /auth/me": () => unauthenticated,
       "POST /auth/login": () => ({ status: 200, body: user }),
-      "POST /auth/logout": () => ({ status: 204 }),
     });
     renderApp("/login?next=/internal");
     await userEvent.type(await screen.findByLabelText("Email"), user.email);
     await userEvent.type(screen.getByLabelText("Password"), "correct horse battery");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
-    expect(await screen.findByRole("heading", { name: "You're signed in" })).toBeInTheDocument();
-    expect(screen.getByText(user.email)).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole("button", { name: "Sign out" }));
-    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
+    // A new account has no organisation yet, so it is sent to organisation setup.
+    expect(await screen.findByRole("heading", { name: "Create your organisation" })).toBeInTheDocument();
   });
 
   it("only redirects within the app after sign in", () => {
@@ -218,7 +214,7 @@ describe("Signed-in visitors", () => {
     mockApi({ "GET /auth/me": () => ({ status: 200, body: user }) });
     renderApp("/login");
     await waitFor(() =>
-      expect(screen.getByRole("heading", { name: "You're signed in" })).toBeInTheDocument(),
+      expect(screen.getByRole("heading", { name: "Create your organisation" })).toBeInTheDocument(),
     );
   });
 });

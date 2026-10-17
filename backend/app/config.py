@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     # Base URL of the web app, used to build links in emails.
     public_base_url: str = "http://localhost:5173"
 
+    # Where uploaded files (logos, later policy documents) are stored on disk.
+    storage_dir: str = "storage"
+    logo_max_bytes: int = 2 * 1024 * 1024
+
     # Sessions and one-time tokens
     session_days: int = 14
     verify_token_hours: int = 24

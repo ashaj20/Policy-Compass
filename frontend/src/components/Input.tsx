@@ -9,12 +9,21 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 /** Labelled text input. Errors are linked with aria-describedby so screen readers announce them. */
-export function Input({ label, hint, error, action, id, className = "", ...rest }: InputProps) {
+export function Input({
+  label,
+  hint,
+  error,
+  action,
+  id,
+  className = "",
+  "aria-describedby": extraDescribedBy,
+  ...rest
+}: InputProps) {
   const generatedId = useId();
   const inputId = id ?? generatedId;
   const hintId = hint ? `${inputId}-hint` : undefined;
   const errorId = error ? `${inputId}-error` : undefined;
-  const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
+  const describedBy = [hintId, extraDescribedBy, errorId].filter(Boolean).join(" ") || undefined;
 
   const input = (
     <input

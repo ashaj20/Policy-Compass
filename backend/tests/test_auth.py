@@ -107,8 +107,8 @@ def test_verified_user_can_log_in_and_cookie_is_httponly(client, mailer):
 
     me = client.get("/api/auth/me")
     assert me.status_code == 200
-    # No organisation access until a membership exists (US-002/003 add memberships).
-    assert set(me.json()) == {"id", "email"}
+    # No organisation access until a membership exists.
+    assert me.json()["memberships"] == []
 
 
 def test_verification_link_is_single_use(client, mailer):
