@@ -13,6 +13,25 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:5173"]
     # Built React app to serve from the same origin as the API (set in the Docker image).
     frontend_dist: str | None = None
+    # Base URL of the web app, used to build links in emails.
+    public_base_url: str = "http://localhost:5173"
+
+    # Sessions and one-time tokens
+    session_days: int = 14
+    verify_token_hours: int = 24
+    reset_token_minutes: int = 60
+
+    # Email. With no SMTP host, emails are written to the server log (development).
+    email_from: str = "Policy Compass <no-reply@example.org>"
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_starttls: bool = True
+
+    @property
+    def secure_cookies(self) -> bool:
+        return self.environment == "production"
 
     @field_validator("database_url")
     @classmethod

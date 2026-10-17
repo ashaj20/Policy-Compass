@@ -3,7 +3,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import health
+from app.api import auth, health
 from app.config import get_settings
 from app.errors import install_error_handlers
 from app.frontend import mount_frontend
@@ -23,6 +23,7 @@ def create_app() -> FastAPI:
     )
     install_error_handlers(app)
     app.include_router(health.router, prefix="/api")
+    app.include_router(auth.router, prefix="/api")
     if settings.frontend_dist:
         mount_frontend(app, settings.frontend_dist)
     return app

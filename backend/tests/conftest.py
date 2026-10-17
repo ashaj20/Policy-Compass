@@ -23,6 +23,7 @@ os.environ["PC_DATABASE_URL"] = TEST_DATABASE_URL
 os.environ.setdefault("PC_ENVIRONMENT", "test")
 
 from app.db import get_db  # noqa: E402
+from app.email import MemoryEmailSender, get_email_sender  # noqa: E402
 from app.main import create_app  # noqa: E402
 
 
@@ -52,9 +53,15 @@ def db(engine) -> Iterator[Session]:
 
 
 @pytest.fixture
-def app(db):
+def mailer() -> MemoryEmailSender:
+    return MemoryEmailSender()
+
+
+@pytest.fixture
+def app(db, mailer):
     app = create_app()
     app.dependency_overrides[get_db] = lambda: db
+    app.dependency_overrides[get_email_sender] = lambda: mailer
     return app
 
 
