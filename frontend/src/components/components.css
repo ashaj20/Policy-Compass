@@ -1304,3 +1304,109 @@ a.pc-button {
   display: flex;
   flex-wrap: wrap;
 }
+/* Branding */
+.pc-branding {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--pc-space-5);
+  align-items: start;
+}
+@media (max-width: 1000px) {
+  .pc-branding {
+    grid-template-columns: 1fr;
+  }
+}
+.pc-branding__controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pc-space-5);
+}
+.pc-colour-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--pc-space-3);
+}
+.pc-colour-row .pc-field {
+  flex: 1;
+}
+.pc-colour-swatch {
+  margin-bottom: var(--pc-space-4);
+}
+.pc-colour-swatch input {
+  width: var(--pc-touch);
+  height: var(--pc-touch);
+  padding: 2px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-surface);
+  cursor: pointer;
+}
+.pc-colour-swatch:focus-within {
+  outline: 3px solid var(--pc-focus);
+  outline-offset: 2px;
+  border-radius: var(--pc-radius-sm);
+}
+.pc-colour-chip {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: middle;
+  border: 1px solid var(--pc-border);
+  border-radius: 4px;
+}
+.pc-preview {
+  margin: 0;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-md);
+  overflow: hidden;
+  background: var(--pc-bg);
+}
+.pc-preview__header {
+  display: flex;
+  align-items: center;
+  gap: var(--pc-space-2);
+  padding: var(--pc-space-3) var(--pc-space-4);
+  background: var(--pc-surface);
+  border-bottom: 3px solid var(--pc-brand);
+}
+.pc-preview__logo {
+  height: 28px;
+  max-width: 120px;
+  object-fit: contain;
+}
+.pc-preview__name {
+  font-weight: 700;
+}
+.pc-preview__body {
+  padding: var(--pc-space-8) var(--pc-space-5);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--pc-space-3);
+}
+.pc-preview__title {
+  margin: 0;
+  font-size: var(--pc-text-xl);
+  font-weight: 700;
+}
+.pc-preview__input {
+  width: 100%;
+  max-width: 320px;
+  padding: var(--pc-space-2) var(--pc-space-3);
+  border: 1px solid var(--pc-gray-400);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-surface);
+  color: var(--pc-text-muted);
+  text-align: left;
+}
+.pc-preview__button {
+  padding: var(--pc-space-2) var(--pc-space-5);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-brand);
+  color: var(--pc-brand-contrast);
+  font-weight: 600;
+}
+.pc-public__header {
+  border-bottom: 3px solid var(--pc-brand);
+}

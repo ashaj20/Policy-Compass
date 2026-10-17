@@ -1,13 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useParams } from "react-router-dom";
 import { ErrorState, LoadingState } from "../../components";
 import { api, ApiError } from "../../lib/api";
+import { brandStyle, DEFAULT_BRAND } from "../../lib/colour";
 
 interface PublicOrganisation {
   name: string;
   slug: string;
   website: string | null;
   logo_url: string | null;
+  primary_colour: string;
+  brand_text_colour: string;
 }
 
 /**
@@ -37,7 +40,7 @@ export function PublicOrganisationPage() {
   if (!org) return <LoadingState label="Loading…" />;
 
   return (
-    <div className="pc-public">
+    <div className="pc-public" style={brandStyle(org.primary_colour ?? DEFAULT_BRAND, org.brand_text_colour) as CSSProperties}>
       <header className="pc-public__header">
         {org.logo_url && <img src={org.logo_url} alt="" className="pc-public__logo" />}
         <span className="pc-public__name">{org.name}</span>

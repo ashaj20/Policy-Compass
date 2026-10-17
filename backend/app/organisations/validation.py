@@ -78,3 +78,47 @@ def detect_logo_type(data: bytes) -> tuple[str, str] | None:
     if len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP":
         return "image/webp", "webp"
     return None
+
+
+# --- Branding (US-028) ---
+
+HEX_COLOUR = re.compile(r"^#?([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$")
+DARK_TEXT = "#141b24"
+LIGHT_TEXT = "#ffffff"
+
+
+def check_colour(value: str) -> str:
+    value = (value or "").strip()
+    match = HEX_COLOUR.match(value)
+    if not match:
+        raise ValueError("Enter a colour as a hex code, like #1f5aa6")
+    digits = match.group(1).lower()
+    if len(digits) == 3:
+        digits = "".join(c * 2 for c in digits)
+    return f"#{digits}"
+
+
+def _luminance(hex_colour: str) -> float:
+    def channel(c: int) -> float:
+        s = c / 255
+        return s / 12.92 if s <= 0.03928 else ((s + 0.055) / 1.055) ** 2.4
+
+    r, g, b = (int(hex_colour[i : i + 2], 16) for i in (1, 3, 5))
+    return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
+
+
+def contrast_ratio(a: str, b: str) -> float:
+    la, lb = sorted((_luminance(a), _luminance(b)), reverse=True)
+    return (la + 0.05) / (lb + 0.05)
+
+
+def text_colour_for(background: str) -> str:
+    """White or dark text, whichever is easier to read on the brand colour."""
+    if contrast_ratio(background, LIGHT_TEXT) >= contrast_ratio(background, DARK_TEXT):
+        return LIGHT_TEXT
+    return DARK_TEXT
+
+
+def meets_contrast(background: str) -> bool:
+    """WCAG AA for normal text (4.5:1) with the chosen text colour."""
+    return contrast_ratio(background, text_colour_for(background)) >= 4.5

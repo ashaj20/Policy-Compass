@@ -6,6 +6,9 @@ export interface Organisation {
   slug: string;
   website: string | null;
   logo_url: string | null;
+  primary_colour: string;
+  brand_text_colour: string;
+  colour_meets_contrast: boolean;
   role: "ADMIN" | "STAFF";
 }
 

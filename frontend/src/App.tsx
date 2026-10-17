@@ -14,6 +14,7 @@ import { PolicyDetailPage } from "./pages/policies/PolicyDetailPage";
 import { UploadPolicyPage } from "./pages/policies/UploadPolicyPage";
 import { PublicOrganisationPage } from "./pages/public/PublicOrganisationPage";
 import { ActivityPage } from "./pages/settings/ActivityPage";
+import { BrandingPage } from "./pages/settings/BrandingPage";
 import { MembersPage } from "./pages/settings/MembersPage";
 import { OrganisationSettingsPage } from "./pages/settings/OrganisationSettingsPage";
 import { CreateOrganisationPage } from "./pages/setup/CreateOrganisationPage";
@@ -114,6 +115,16 @@ export function AppRoutes() {
           <RequireAuth>
             <RequireOrganisation>
               <ContactsPage />
+            </RequireOrganisation>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/internal/settings/branding"
+        element={
+          <RequireAuth>
+            <RequireOrganisation>
+              <BrandingPage />
             </RequireOrganisation>
           </RequireAuth>
         }

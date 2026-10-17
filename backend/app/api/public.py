@@ -12,6 +12,7 @@ from app.api.organisations import logo_url
 from app.deps import DbSession, FileStorage
 from app.errors import NotFound
 from app.models import Organisation
+from app.organisations.validation import text_colour_for
 
 router = APIRouter(prefix="/public", tags=["public"])
 
@@ -23,6 +24,8 @@ class PublicOrganisationOut(BaseModel):
     slug: str
     website: str | None
     logo_url: str | None
+    primary_colour: str
+    brand_text_colour: str
 
 
 def _organisation(db, slug: str) -> Organisation:
@@ -36,7 +39,12 @@ def _organisation(db, slug: str) -> Organisation:
 def public_organisation(slug: str, db: DbSession) -> PublicOrganisationOut:
     org = _organisation(db, slug)
     return PublicOrganisationOut(
-        name=org.name, slug=org.slug, website=org.website, logo_url=logo_url(org)
+        name=org.name,
+        slug=org.slug,
+        website=org.website,
+        logo_url=logo_url(org),
+        primary_colour=org.primary_colour,
+        brand_text_colour=text_colour_for(org.primary_colour),
     )
 
 

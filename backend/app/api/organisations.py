@@ -6,7 +6,14 @@ from pydantic import BaseModel, field_validator
 from app.deps import AdminOf, AppSettings, CurrentUser, DbSession, FileStorage, MemberOf
 from app.models import Membership, Organisation
 from app.organisations import service
-from app.organisations.validation import check_name, check_slug, check_website
+from app.organisations.validation import (
+    check_colour,
+    check_name,
+    check_slug,
+    check_website,
+    meets_contrast,
+    text_colour_for,
+)
 
 router = APIRouter(prefix="/organisations", tags=["organisations"])
 
@@ -26,11 +33,17 @@ class OrganisationUpdateIn(BaseModel):
 
     name: str | None = None
     website: str | None = None
+    primary_colour: str | None = None
 
     @field_validator("name")
     @classmethod
     def valid_name(cls, v: str | None) -> str:
         return check_name(v or "")
+
+    @field_validator("primary_colour")
+    @classmethod
+    def valid_colour(cls, v: str | None) -> str:
+        return check_colour(v or "")
 
     _website = field_validator("website")(check_website)
 
@@ -47,6 +60,10 @@ class OrganisationOut(BaseModel):
     slug: str
     website: str | None
     logo_url: str | None
+    primary_colour: str
+    # Text colour that reads best on the primary colour, and whether it meets WCAG AA.
+    brand_text_colour: str
+    colour_meets_contrast: bool
     role: str
 
 
@@ -71,6 +88,9 @@ def organisation_out(membership: Membership) -> OrganisationOut:
         slug=org.slug,
         website=org.website,
         logo_url=logo_url(org),
+        primary_colour=org.primary_colour,
+        brand_text_colour=text_colour_for(org.primary_colour),
+        colour_meets_contrast=meets_contrast(org.primary_colour),
         role=membership.role,
     )
 

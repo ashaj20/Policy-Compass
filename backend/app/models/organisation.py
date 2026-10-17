@@ -36,6 +36,8 @@ class Organisation(Base):
     # Storage key of the uploaded logo, never a user-supplied filename.
     logo_key: Mapped[str | None] = mapped_column(String(200))
     logo_content_type: Mapped[str | None] = mapped_column(String(50))
+    # Public branding (US-028): a #rrggbb colour used for buttons and accents on public pages.
+    primary_colour: Mapped[str] = mapped_column(String(7), server_default="#1f5aa6")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     memberships: Mapped[list["Membership"]] = relationship(back_populates="organisation")

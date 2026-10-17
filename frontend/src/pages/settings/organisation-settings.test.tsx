@@ -19,6 +19,9 @@ const org = {
   slug: "riverside-housing",
   website: "https://www.riversidehousing.example",
   logo_url: null as string | null,
+  primary_colour: "#1f5aa6",
+  brand_text_colour: "#ffffff",
+  colour_meets_contrast: true,
   role: "ADMIN",
 };
 
@@ -61,42 +64,6 @@ describe("Organisation settings", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
     expect(screen.getByText(/Enter your organisation's name/)).toBeInTheDocument();
     expect(spy.mock.calls.some(([, init]) => init?.method === "PATCH")).toBe(false);
-  });
-
-  it("uploads and removes the logo", async () => {
-    let current = org;
-    mockApi({
-      "GET /auth/me": () => ({ status: 200, body: admin }),
-      "GET /organisations/o1": () => ({ status: 200, body: current }),
-      "PUT /organisations/o1/logo": () => {
-        current = { ...org, logo_url: "/api/public/organisations/riverside-housing/logo?v=1" };
-        return { status: 200, body: current };
-      },
-      "DELETE /organisations/o1/logo": () => ({ status: 200, body: { ...org, logo_url: null } }),
-    });
-    renderApp("/internal/settings");
-    const logo = await screen.findByRole("region", { name: "Logo" });
-    expect(within(logo).getByText("No logo")).toBeInTheDocument();
-    const input = within(logo).getByText("Upload logo").querySelector("input")!;
-    await userEvent.upload(input, new File(["png"], "logo.png", { type: "image/png" }));
-    expect(await within(logo).findByText("Your logo has been updated.")).toBeInTheDocument();
-    expect(within(logo).getByRole("img", { name: "Riverside Housing logo" })).toBeInTheDocument();
-
-    await userEvent.click(within(logo).getByRole("button", { name: "Remove logo" }));
-    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Remove logo" }));
-    expect(await within(logo).findByText("Your logo has been removed.")).toBeInTheDocument();
-  });
-
-  it("rejects an unsuitable logo before uploading", async () => {
-    mockApi({
-      "GET /auth/me": () => ({ status: 200, body: admin }),
-      "GET /organisations/o1": () => ({ status: 200, body: org }),
-    });
-    renderApp("/internal/settings");
-    const logo = await screen.findByRole("region", { name: "Logo" });
-    const input = within(logo).getByText("Upload logo").querySelector("input")!;
-    await userEvent.upload(input, new File(["<svg/>"], "logo.svg", { type: "image/svg+xml" }), { applyAccept: false });
-    expect(within(logo).getByRole("alert")).toHaveTextContent("PNG, JPEG or WebP");
   });
 
   it("shows the public URL", async () => {

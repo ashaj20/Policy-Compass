@@ -111,7 +111,7 @@ def set_logo(
         storage.delete(old_key)
 
 
-EDITABLE_FIELDS = ("name", "website")
+EDITABLE_FIELDS = ("name", "website", "primary_colour")
 
 
 def update_organisation(

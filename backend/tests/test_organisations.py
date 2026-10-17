@@ -235,6 +235,8 @@ def test_public_slug_works_and_exposes_only_public_fields(make_client, client):
         "slug": "riverside-housing",
         "website": "https://www.riversidehousing.example",
         "logo_url": None,
+        "primary_colour": "#1f5aa6",
+        "brand_text_colour": "#ffffff",
     }
     assert "jane@example.org" not in resp.text
 
