@@ -59,6 +59,7 @@ def _store_version(
         version_label=version_label,
         effective_date=effective_date,
         status=VersionStatus.PROCESSING,
+        processing_stage="QUEUED",
         storage_key=key,
         original_filename=display_filename(filename),
         content_type=detected.content_type,
@@ -528,5 +529,32 @@ def activate(db: Session, policy: Policy, version: PolicyVersion, actor: User) -
         AuditAction.POLICY_ACTIVATED,
         previous={"active_version": previous.version_label if previous else None},
         new={"active_version": version.version_label},
+    )
+    db.commit()
+
+
+def retry_processing(db: Session, policy: Policy, version: PolicyVersion, actor: User) -> None:
+    """Send a failed version back through processing (US-012). The caller queues the work.
+
+    Only FAILED versions can be retried; re-processing replaces any passages, so a retry never
+    creates duplicates. The active version is unaffected throughout.
+    """
+    _require_not_archived(policy)
+    _lock(db, policy)
+    if version.status != VersionStatus.FAILED:
+        raise AppError(409, "not_failed", "Only a version that failed processing can be retried.")
+    previous_reason = version.failure_reason
+    version.status = VersionStatus.PROCESSING
+    version.processing_stage = "QUEUED"
+    version.failure_reason = None
+    version.error_id = None
+    version.processed_at = None
+    touch(policy)
+    _audit_policy(
+        db,
+        policy,
+        actor,
+        AuditAction.POLICY_PROCESSING_RETRIED,
+        previous={"version": version.version_label, "reason": previous_reason},
     )
     db.commit()

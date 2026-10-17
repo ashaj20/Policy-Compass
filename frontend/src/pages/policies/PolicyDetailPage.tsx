@@ -8,6 +8,7 @@ import { VersionMeta } from "../../components/VersionMeta";
 import { api, ApiError } from "../../lib/api";
 import { currentMembership, useAuth } from "../../lib/auth";
 import { formatFileSize, formatLongDate } from "../../lib/format";
+import { usePolling } from "../../lib/polling";
 import {
   AUDIENCE_OPTIONS,
   validateCategory,
@@ -76,6 +77,10 @@ export function PolicyDetailPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Keep the page current while a version is being processed (US-012).
+  const processing = policy?.versions.some((x) => x.status === "PROCESSING") ?? false;
+  usePolling(async () => setPolicy(await api<PolicyDetail>(base)), processing);
 
   const back = (
     <Link to="/internal/policies" className="pc-back-link">

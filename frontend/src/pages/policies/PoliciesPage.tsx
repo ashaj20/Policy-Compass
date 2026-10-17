@@ -6,6 +6,7 @@ import { StatusBadge } from "../../components/StatusBadge";
 import { api, ApiError } from "../../lib/api";
 import { currentMembership, useAuth } from "../../lib/auth";
 import { formatLongDate } from "../../lib/format";
+import { usePolling } from "../../lib/polling";
 import { STATUS_LABELS, type Audience, type VersionStatus } from "../../lib/policy";
 
 interface PolicyListItem {
@@ -71,6 +72,13 @@ export function PoliciesPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Refresh quietly while anything is processing, so statuses update by themselves (US-012).
+  const anyProcessing =
+    data?.policies.some((p) => p.status === "PROCESSING" || p.pending_status === "PROCESSING") ?? false;
+  usePolling(async () => {
+    setData(await api<PolicyList>(`/organisations/${membership.organisation_id}/policies${query ? `?${query}` : ""}`));
+  }, anyProcessing);
 
   // Apply the search shortly after typing stops.
   useEffect(() => {

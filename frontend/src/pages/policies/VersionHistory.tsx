@@ -1,6 +1,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import { Alert, Button, ConfirmDialog, Input, Modal } from "../../components";
 import { FileDropzone } from "../../components/FileDropzone";
+import { ProcessingSteps } from "../../components/ProcessingSteps";
 import { StatusBadge } from "../../components/StatusBadge";
 import { api, ApiError, uploadWithProgress } from "../../lib/api";
 import { formatFileSize, formatLongDate } from "../../lib/format";
@@ -46,7 +47,7 @@ export function VersionHistory<T>({
   const [busy, setBusy] = useState<string>();
   const [error, setError] = useState<string>();
 
-  async function run(version: PolicyVersion, step: "mark-ready" | "activate" | "withdraw" | "reject", body?: object) {
+  async function run(version: PolicyVersion, step: "mark-ready" | "activate" | "withdraw" | "reject" | "retry", body?: object) {
     setBusy(version.id + step);
     setError(undefined);
     try {
@@ -59,6 +60,7 @@ export function VersionHistory<T>({
         activate: `Version ${version.version} is now active.`,
         withdraw: `Version ${version.version} is back in draft.`,
         reject: `Version ${version.version} has been sent back to draft.`,
+        retry: `Processing version ${version.version} again.`,
       };
       setAction(undefined);
       onChanged(updated, messages[step]);
@@ -119,12 +121,32 @@ export function VersionHistory<T>({
                   </p>
                 </Alert>
               )}
+              {v.status === "PROCESSING" && (
+                <div role="status" aria-live="polite">
+                  <ProcessingSteps stage={v.processing_stage} />
+                  <p className="pc-field__hint">This may take a few moments. This page updates by itself.</p>
+                </div>
+              )}
               {v.status === "FAILED" && (
-                <Alert tone="error" title="We couldn't process this version">
-                  <p>{v.failure_reason ?? "Something went wrong while preparing this document for search."}</p>
-                  <p>It will never replace the active version. Your original document has not been deleted.</p>
-                  {v.error_id && <p className="pc-state__ref">Reference: {v.error_id}</p>}
-                </Alert>
+                <>
+                  <ProcessingSteps stage={v.processing_stage} failed />
+                  <Alert
+                    tone="error"
+                    title="We couldn't process this policy. Your original document has not been deleted."
+                    actions={
+                      isAdmin &&
+                      !archived && (
+                        <Button loading={busy === v.id + "retry"} onClick={() => run(v, "retry")}>
+                          Retry processing
+                        </Button>
+                      )
+                    }
+                  >
+                    <p>{v.failure_reason ?? "Something went wrong while preparing this document for search."}</p>
+                    <p>This version will never replace the active version.</p>
+                    {v.error_id && <p className="pc-state__ref">Reference: {v.error_id}</p>}
+                  </Alert>
+                </>
               )}
               <div className="pc-versions__actions">
                 <a className="pc-button pc-button--ghost" href={`/api${base}/versions/${v.id}/file`} download>

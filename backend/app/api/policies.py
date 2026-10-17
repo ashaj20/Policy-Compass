@@ -487,3 +487,14 @@ def activate(
     policy = service.get_policy(db, admin.organisation, policy_id, staff_view=False)
     service.activate(db, policy, service.get_version(policy, version_id), admin.user)
     return _detail(db, policy, admin)
+
+
+@router.post("/{policy_id}/versions/{version_id}/retry")
+def retry_processing(
+    policy_id: uuid.UUID, version_id: uuid.UUID, admin: AdminOf, db: DbSession, runner: Runner
+) -> PolicyDetailOut:
+    policy = service.get_policy(db, admin.organisation, policy_id, staff_view=False)
+    version = service.get_version(policy, version_id)
+    service.retry_processing(db, policy, version, admin.user)
+    runner.submit(version.id)
+    return _detail(db, policy, admin)

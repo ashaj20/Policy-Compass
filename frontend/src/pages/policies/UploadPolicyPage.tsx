@@ -3,7 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { Alert, AppShell, Button, ErrorState, Input, PageHeader } from "../../components";
 import { AudienceBadge } from "../../components/AudienceBadge";
 import { FileDropzone } from "../../components/FileDropzone";
+import { ProcessingSteps } from "../../components/ProcessingSteps";
 import { RadioGroup } from "../../components/RadioGroup";
+import { StatusBadge } from "../../components/StatusBadge";
 import { VersionMeta } from "../../components/VersionMeta";
 import { api, ApiError, uploadWithProgress } from "../../lib/api";
 import { currentMembership, useAuth } from "../../lib/auth";
@@ -18,7 +20,9 @@ import {
   validateVersion,
   type Audience,
   type Policy,
+  type PolicyVersion,
 } from "../../lib/policy";
+import { usePolling } from "../../lib/polling";
 import { focusFirstError, hasErrors, type FieldErrors } from "../../lib/validation";
 
 /** Upload an approved policy document with its details (US-006). Administrators only. */
@@ -51,6 +55,33 @@ export function UploadPolicyPage() {
       .then(setCategories)
       .catch(() => setCategories([]));
   }, [base, isAdmin]);
+
+  // Follow processing after upload (US-012), until it finishes or fails.
+  const [uploadedVersion, setUploadedVersion] = useState<PolicyVersion>();
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<string>();
+  const currentVersion = uploadedVersion ?? uploaded?.latest_version;
+  usePolling(async () => {
+    const detail = await api<{ versions: PolicyVersion[] }>(`${base}/${uploaded!.id}`);
+    setUploadedVersion(detail.versions[0]);
+  }, currentVersion?.status === "PROCESSING");
+
+  async function retry() {
+    if (!uploaded || !currentVersion) return;
+    setRetrying(true);
+    setRetryError(undefined);
+    try {
+      const detail = await api<{ versions: PolicyVersion[] }>(
+        `${base}/${uploaded.id}/versions/${currentVersion.id}/retry`,
+        { method: "POST" },
+      );
+      setUploadedVersion(detail.versions[0]);
+    } catch (err) {
+      setRetryError((err as ApiError).message);
+    } finally {
+      setRetrying(false);
+    }
+  }
 
   if (!isAdmin) {
     return (
@@ -109,6 +140,7 @@ export function UploadPolicyPage() {
 
   function reset() {
     setUploaded(undefined);
+    setUploadedVersion(undefined);
     setFile(undefined);
     setName("");
     setNameEdited(false);
@@ -120,13 +152,59 @@ export function UploadPolicyPage() {
     setErrors({});
   }
 
-  if (uploaded) {
-    const v = uploaded.latest_version;
+  if (uploaded && currentVersion) {
+    const v = currentVersion;
+    const actions = (
+      <div className="pc-logo-setting__buttons">
+        <Link to={`/internal/policies/${uploaded.id}`} className="pc-button pc-button--primary">
+          View policy
+        </Link>
+        <Button variant="secondary" onClick={reset}>
+          Upload another policy
+        </Button>
+        <Button variant="secondary" onClick={() => navigate("/internal/policies")}>
+          Back to policies
+        </Button>
+      </div>
+    );
+
+    if (v.status === "FAILED") {
+      return (
+        <AppShell>
+          <PageHeader title="Upload policy" />
+          <section className="pc-card" aria-labelledby="upload-failed-title">
+            <h2 id="upload-failed-title" className="pc-card__title">
+              We couldn't process this policy
+            </h2>
+            <p className="pc-dropzone__name">{v.original_filename}</p>
+            <ProcessingSteps stage={v.processing_stage} failed />
+            <Alert tone="error" title={v.failure_reason ?? "Something went wrong while preparing this document for search."}>
+              <p>Your original document has not been deleted.</p>
+              {v.error_id && <p className="pc-state__ref">Reference: {v.error_id}</p>}
+            </Alert>
+            {retryError && <Alert tone="error" title={retryError} />}
+            <div className="pc-logo-setting__buttons pc-auth__spaced">
+              <Button onClick={retry} loading={retrying}>
+                Retry processing
+              </Button>
+              <Button variant="secondary" onClick={() => navigate("/internal/policies")}>
+                Back to policies
+              </Button>
+            </div>
+          </section>
+        </AppShell>
+      );
+    }
+
+    const processing = v.status === "PROCESSING";
     return (
       <AppShell>
         <PageHeader title="Upload policy" />
         <section className="pc-card pc-upload-done" aria-labelledby="upload-done-title">
-          <Alert tone="success" title="Policy uploaded successfully." />
+          <Alert
+            tone="success"
+            title={processing ? "Policy uploaded successfully." : "Processed and ready for review."}
+          />
           <h2 id="upload-done-title" className="pc-card__title pc-auth__spaced">
             {uploaded.name}
           </h2>
@@ -145,32 +223,24 @@ export function UploadPolicyPage() {
             <div>
               <dt>Status</dt>
               <dd>
-                <span className="pc-status pc-status--processing">
-                  <span aria-hidden="true">●</span> Processing
-                </span>
+                <StatusBadge status={v.status} />
               </dd>
             </div>
           </dl>
-          <p className="pc-auth__muted">
-            Processing policy… It won't be used to answer questions until it has been processed, marked ready
-            and approved by an administrator.
-          </p>
-          <div className="pc-logo-setting__buttons">
-            <Link to={`/internal/policies/${uploaded.id}`} className="pc-button pc-button--primary">
-              View policy
-            </Link>
-            <Button variant="secondary" onClick={reset}>
-              Upload another policy
-            </Button>
-            <Button variant="secondary" onClick={() => navigate("/internal/policies")}>
-              Back to policies
-            </Button>
+          <div role="status" aria-live="polite">
+            <h3 className="pc-upload__subheading">{processing ? "Processing policy" : "Processing complete"}</h3>
+            <ProcessingSteps stage={v.processing_stage} />
+            <p className="pc-auth__muted">
+              {processing
+                ? "This may take a few moments. It won't be used to answer questions until it has been processed, marked ready and approved by an administrator."
+                : "Next, someone marks it ready for approval from the policy page, then an administrator approves it."}
+            </p>
           </div>
+          {actions}
         </section>
       </AppShell>
     );
   }
-
   const uploading = progress !== undefined;
   const showOwner = audience === "INTERNAL" || audience === "BOTH";
   const showHelpRoute = audience === "PUBLIC" || audience === "BOTH";

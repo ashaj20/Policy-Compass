@@ -105,6 +105,8 @@ export function describeEvent(e: AuditEvent): AuditDescription {
       return { summary: `approved and activated ${e.object_label}`, changes: diff(e) };
     case "POLICY_SUPERSEDED":
       return { summary: `superseded version ${e.previous?.version} of ${e.object_label}`, changes: [] };
+    case "POLICY_PROCESSING_RETRIED":
+      return { summary: `retried processing version ${e.previous?.version} of ${e.object_label}`, changes: [] };
     case "POLICY_EDITED":
       return { summary: `edited the policy ${e.object_label}`, changes: diff(e) };
     default:

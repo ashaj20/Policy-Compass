@@ -152,9 +152,8 @@ describe("Version review and approval", () => {
     });
     renderApp("/internal/policies/p1");
     expect(await screen.findByText(/will never replace the active version/)).toBeInTheDocument();
-    expect(screen.getByText("We couldn't process this version")).toBeInTheDocument();
+    expect(screen.getByText("We couldn't process this policy. Your original document has not been deleted.")).toBeInTheDocument();
     expect(screen.getByText("We couldn't find enough text in this document.")).toBeInTheDocument();
-    expect(screen.getByText(/Your original document has not been deleted/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Mark ready for approval" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Approve & activate" })).not.toBeInTheDocument();
     expect(screen.getByText("Available to Policy Compass")).toBeInTheDocument();
