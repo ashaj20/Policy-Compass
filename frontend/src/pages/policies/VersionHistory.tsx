@@ -99,6 +99,12 @@ export function VersionHistory<T>({
                     {v.activated_by ? ` by ${v.activated_by}` : ""}
                   </li>
                 )}
+                {v.processed_at && v.status !== "FAILED" && (
+                  <li>
+                    Processed {formatLongDate(v.processed_at)}
+                    {v.chunk_count ? ` into ${v.chunk_count} searchable ${v.chunk_count === 1 ? "passage" : "passages"}` : ""}
+                  </li>
+                )}
                 {v.superseded_at && (
                   <li>
                     Superseded {formatLongDate(v.superseded_at)}
@@ -114,7 +120,11 @@ export function VersionHistory<T>({
                 </Alert>
               )}
               {v.status === "FAILED" && (
-                <p className="pc-field__error">This version couldn't be processed and will never replace the active version.</p>
+                <Alert tone="error" title="We couldn't process this version">
+                  <p>{v.failure_reason ?? "Something went wrong while preparing this document for search."}</p>
+                  <p>It will never replace the active version. Your original document has not been deleted.</p>
+                  {v.error_id && <p className="pc-state__ref">Reference: {v.error_id}</p>}
+                </Alert>
               )}
               <div className="pc-versions__actions">
                 <a className="pc-button pc-button--ghost" href={`/api${base}/versions/${v.id}/file`} download>

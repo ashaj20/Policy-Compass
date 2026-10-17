@@ -8,7 +8,7 @@ from fastapi import APIRouter, Form, Response, UploadFile, status
 from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, ValidationError, field_validator
 
-from app.deps import AdminOf, AppSettings, DbSession, FileStorage, MemberOf
+from app.deps import AdminOf, AppSettings, DbSession, FileStorage, MemberOf, Runner
 from app.errors import AppError, NotFound
 from app.models import Audience, Policy, PolicyVersion, Role, VersionStatus
 from app.policies import service
@@ -56,6 +56,11 @@ class VersionOut(BaseModel):
     rejected_at: datetime | None = None
     rejected_by: str | None = None
     rejection_reason: str | None = None
+    processing_stage: str | None = None
+    processed_at: datetime | None = None
+    chunk_count: int | None = None
+    failure_reason: str | None = None
+    error_id: str | None = None
 
 
 class PolicyOut(BaseModel):
@@ -92,6 +97,11 @@ def version_out(v: PolicyVersion) -> VersionOut:
         rejected_at=v.rejected_at if v.status == VersionStatus.DRAFT else None,
         rejected_by=_email(v.rejected_by) if v.status == VersionStatus.DRAFT else None,
         rejection_reason=v.rejection_reason if v.status == VersionStatus.DRAFT else None,
+        processing_stage=v.processing_stage,
+        processed_at=v.processed_at,
+        chunk_count=v.chunk_count,
+        failure_reason=v.failure_reason,
+        error_id=v.error_id,
     )
 
 
@@ -180,6 +190,7 @@ def upload_policy(
     db: DbSession,
     settings: AppSettings,
     storage: FileStorage,
+    runner: Runner,
     name: Annotated[str, Form()] = "",
     version: Annotated[str, Form()] = "",
     effective_date: Annotated[str, Form()] = "",
@@ -227,6 +238,8 @@ def upload_policy(
         settings.policy_max_bytes,
         storage,
     )
+    db.refresh(policy)
+    runner.submit(policy.versions[-1].id)
     db.refresh(policy)
     return policy_out(policy)
 
@@ -401,6 +414,7 @@ def upload_new_version(
     db: DbSession,
     settings: AppSettings,
     storage: FileStorage,
+    runner: Runner,
     version: Annotated[str, Form()] = "",
     effective_date: Annotated[str, Form()] = "",
     file: UploadFile | None = None,
@@ -418,7 +432,7 @@ def upload_new_version(
         )
     policy = service.get_policy(db, admin.organisation, policy_id, staff_view=False)
     data = file.file.read(settings.policy_max_bytes + 1)
-    service.upload_new_version(
+    new_version = service.upload_new_version(
         db,
         policy,
         admin.user,
@@ -429,6 +443,7 @@ def upload_new_version(
         settings.policy_max_bytes,
         storage,
     )
+    runner.submit(new_version.id)
     return _detail(db, policy, admin)
 
 

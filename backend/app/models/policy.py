@@ -9,6 +9,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Integer,
     String,
     UniqueConstraint,
     func,
@@ -139,6 +140,14 @@ class PolicyVersion(Base):
     uploaded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.clock_timestamp()
     )
+
+    # Document processing (US-011). failure_reason is safe to show to administrators; technical
+    # details go to the server log under error_id.
+    processing_stage: Mapped[str | None] = mapped_column(String(20))
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    chunk_count: Mapped[int | None] = mapped_column(Integer)
+    failure_reason: Mapped[str | None] = mapped_column(String(300))
+    error_id: Mapped[str | None] = mapped_column(String(20))
 
     # Review and approval (REVIEW F-decisions). Who and when, for every step.
     submitted_by_id: Mapped[uuid.UUID | None] = mapped_column(

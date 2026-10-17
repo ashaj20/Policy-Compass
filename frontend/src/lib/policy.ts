@@ -32,6 +32,11 @@ export interface PolicyVersion {
   rejected_at?: string | null;
   rejected_by?: string | null;
   rejection_reason?: string | null;
+  processing_stage?: string | null;
+  processed_at?: string | null;
+  chunk_count?: number | null;
+  failure_reason?: string | null;
+  error_id?: string | null;
 }
 
 export interface Policy {

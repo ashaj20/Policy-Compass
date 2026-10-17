@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,7 +14,20 @@ def create_app() -> FastAPI:
     settings = get_settings()
     logging.basicConfig(level=logging.INFO)
 
-    app = FastAPI(title="Policy Compass API", version="0.1.0")
+    @asynccontextmanager
+    async def lifespan(_: FastAPI):
+        if settings.resume_processing_on_startup:
+            from app.db import SessionLocal
+            from app.processing import get_runner, resume_unfinished
+
+            resumed = resume_unfinished(SessionLocal, get_runner())
+            if resumed:
+                logging.getLogger("policy_compass").info(
+                    "Resumed processing for %d upload(s)", resumed
+                )
+        yield
+
+    app = FastAPI(title="Policy Compass API", version="0.1.0", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,

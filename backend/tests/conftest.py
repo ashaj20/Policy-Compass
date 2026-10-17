@@ -22,12 +22,15 @@ TEST_DATABASE_URL = os.environ.get(
 )
 os.environ["PC_DATABASE_URL"] = TEST_DATABASE_URL
 os.environ.setdefault("PC_ENVIRONMENT", "test")
+os.environ["PC_RESUME_PROCESSING_ON_STARTUP"] = "false"
 
 from app.auth.security import hash_password  # noqa: E402
 from app.db import get_db  # noqa: E402
 from app.email import MemoryEmailSender, get_email_sender  # noqa: E402
 from app.main import create_app  # noqa: E402
 from app.models import User  # noqa: E402
+from app.processing import InlineRunner, get_runner  # noqa: E402
+from app.rag.embeddings import HashingEmbedder  # noqa: E402
 from app.storage import LocalStorage, get_storage  # noqa: E402
 
 
@@ -66,12 +69,36 @@ def storage(tmp_path) -> LocalStorage:
     return LocalStorage(tmp_path / "storage")
 
 
+class RecordingRunner:
+    """Default in tests: remembers submitted versions and leaves them in PROCESSING."""
+
+    def __init__(self) -> None:
+        self.submitted: list = []
+
+    def submit(self, version_id) -> None:
+        self.submitted.append(version_id)
+
+
 @pytest.fixture
-def app(db, mailer, storage):
+def runner() -> RecordingRunner:
+    return RecordingRunner()
+
+
+@pytest.fixture
+def process_inline(app, db, storage):
+    """Opt in: uploads are processed immediately, with a deterministic test embedder."""
+    inline = InlineRunner(db, storage, HashingEmbedder())
+    app.dependency_overrides[get_runner] = lambda: inline
+    return inline
+
+
+@pytest.fixture
+def app(db, mailer, storage, runner):
     app = create_app()
     app.dependency_overrides[get_db] = lambda: db
     app.dependency_overrides[get_email_sender] = lambda: mailer
     app.dependency_overrides[get_storage] = lambda: storage
+    app.dependency_overrides[get_runner] = lambda: runner
     return app
 
 

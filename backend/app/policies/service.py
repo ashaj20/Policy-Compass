@@ -36,15 +36,6 @@ def touch(policy: Policy, when: datetime | None = None) -> datetime:
     return policy.updated_at
 
 
-def start_processing(version: PolicyVersion) -> None:
-    """Hand a new version to document processing.
-
-    Extraction, indexing and validation are built in US-011. On success the version becomes
-    DRAFT (awaiting review); on failure FAILED. Until then new versions stay in PROCESSING.
-    Only an ACTIVE version is ever retrievable.
-    """
-
-
 def _store_version(
     db: Session,
     policy: Policy,
@@ -149,7 +140,6 @@ def upload_policy(
         db.rollback()
         storage.delete(key)
         raise AppError(409, "policy_exists", NAME_TAKEN, {"name": NAME_TAKEN}) from None
-    start_processing(version)
     return policy
 
 
@@ -436,7 +426,6 @@ def upload_new_version(
         storage.delete(version.storage_key)
         msg = "This version number has already been used for this policy"
         raise AppError(409, "version_exists", msg, {"version": msg}) from None
-    start_processing(version)
     return version
 
 

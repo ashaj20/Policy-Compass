@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     storage_dir: str = "storage"
     logo_max_bytes: int = 2 * 1024 * 1024
     policy_max_bytes: int = 20 * 1024 * 1024
+    # Re-queue uploads left mid-processing when the server starts (off in tests).
+    resume_processing_on_startup: bool = True
 
     # Sessions and one-time tokens
     session_days: int = 14

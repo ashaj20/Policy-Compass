@@ -13,6 +13,7 @@ from app.db import get_db
 from app.email import EmailSender, get_email_sender
 from app.errors import AppError, NotFound, PermissionDenied
 from app.models import Membership, Role, User
+from app.processing import ProcessingRunner, get_runner
 from app.storage import Storage, get_storage
 
 SESSION_COOKIE = "pc_session"
@@ -32,6 +33,7 @@ def get_current_user(db: DbSession, token: SessionToken = None) -> User:
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
 FileStorage = Annotated[Storage, Depends(get_storage)]
+Runner = Annotated[ProcessingRunner, Depends(get_runner)]
 
 
 def get_membership(organisation_id: uuid.UUID, db: DbSession, user: CurrentUser) -> Membership:
