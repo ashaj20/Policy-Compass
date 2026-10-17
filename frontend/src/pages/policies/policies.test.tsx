@@ -19,7 +19,7 @@ const item = (overrides: Record<string, unknown>) => ({
   name: "Emergency Repairs Policy",
   category: "Repairs",
   audience: "INTERNAL",
-  status: "READY",
+  status: "ACTIVE",
   version: "3.2",
   effective_date: "2026-09-01",
   updated_at: "2026-10-17T10:00:00Z",
@@ -46,7 +46,7 @@ describe("Policies list", () => {
     const row = (await screen.findByText("Emergency Repairs Policy")).closest("tr")!;
     expect(within(row).getByText("Internal")).toBeInTheDocument();
     expect(within(row).getByText("3.2")).toBeInTheDocument();
-    expect(within(row).getByText("Ready")).toBeInTheDocument();
+    expect(within(row).getByText("Active")).toBeInTheDocument();
     expect(within(row).getByText("01 September 2026")).toBeInTheDocument();
     expect(within(row).getByText("Not assigned")).toBeInTheDocument();
     const tenancy = screen.getByText("Tenancy Policy").closest("tr")!;

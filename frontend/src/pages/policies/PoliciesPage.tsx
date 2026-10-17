@@ -17,6 +17,8 @@ interface PolicyListItem {
   version: string;
   effective_date: string;
   updated_at: string;
+  pending_version?: string | null;
+  pending_status?: VersionStatus | null;
   owner: string | null;
 }
 
@@ -36,7 +38,7 @@ const AUDIENCE_FILTER = [
 
 const STATUS_FILTER = [
   { value: "", label: "All statuses" },
-  ...(["READY", "PROCESSING", "FAILED", "DRAFT", "ARCHIVED", "SUPERSEDED"] as VersionStatus[]).map((s) => ({
+  ...(["ACTIVE", "READY", "DRAFT", "PROCESSING", "FAILED", "ARCHIVED"] as VersionStatus[]).map((s) => ({
     value: s,
     label: STATUS_LABELS[s],
   })),
@@ -207,6 +209,11 @@ export function PoliciesPage() {
                       <td data-label="Version">{p.version}</td>
                       <td data-label="Status">
                         <StatusBadge status={p.status} />
+                        {p.pending_version && p.pending_status && (
+                          <span className="pc-table__secondary">
+                            Version {p.pending_version}: {STATUS_LABELS[p.pending_status].toLowerCase()}
+                          </span>
+                        )}
                       </td>
                       <td data-label="Effective date">{formatLongDate(p.effective_date)}</td>
                       <td data-label="Owner">{p.owner ?? <span className="pc-auth__muted">Not assigned</span>}</td>

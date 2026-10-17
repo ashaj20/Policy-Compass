@@ -14,13 +14,18 @@ import {
   validatePolicyName,
   type Audience,
   type Policy,
+  type PolicyVersion,
   type VersionStatus,
 } from "../../lib/policy";
+import { NewVersionDialog, VersionHistory } from "./VersionHistory";
 import { focusFirstError, hasErrors, type FieldErrors } from "../../lib/validation";
 
 interface PolicyDetail extends Policy {
   status: VersionStatus;
   version_count: number;
+  current_version: PolicyVersion;
+  active_version_id: string | null;
+  versions: PolicyVersion[];
   archived_at: string | null;
   archived_by: string | null;
   owner: string | null;
@@ -29,9 +34,14 @@ interface PolicyDetail extends Policy {
 
 /** Whether Policy Compass can use this policy to answer questions, in plain words. */
 const KNOWLEDGE_STATUS: Record<VersionStatus, { icon: string; text: string; tone: string }> = {
-  READY: { icon: "✓", text: "Available to Policy Compass", tone: "ok" },
+  ACTIVE: { icon: "✓", text: "Available to Policy Compass", tone: "ok" },
+  READY: { icon: "◷", text: "Ready – awaiting approval. Not yet used to answer questions.", tone: "info" },
   PROCESSING: { icon: "◐", text: "Processing. Not yet used to answer questions.", tone: "info" },
-  DRAFT: { icon: "○", text: "Draft. Not used to answer questions.", tone: "muted" },
+  DRAFT: {
+    icon: "○",
+    text: "Draft. It needs to be marked ready and approved before it is used to answer questions.",
+    tone: "muted",
+  },
   FAILED: { icon: "✕", text: "Processing failed. Not used to answer questions.", tone: "bad" },
   ARCHIVED: { icon: "▣", text: "Archived. No longer used to answer questions.", tone: "muted" },
   SUPERSEDED: { icon: "↺", text: "Superseded by a newer version.", tone: "muted" },
@@ -48,6 +58,7 @@ export function PolicyDetailPage() {
   const [policy, setPolicy] = useState<PolicyDetail>();
   const [error, setError] = useState<ApiError>();
   const [editing, setEditing] = useState(false);
+  const [uploadingVersion, setUploadingVersion] = useState(false);
   const [notice, setNotice] = useState<string>();
   const [confirm, setConfirm] = useState<"archive" | "restore">();
   const [confirmBusy, setConfirmBusy] = useState(false);
@@ -112,7 +123,9 @@ export function PolicyDetailPage() {
   }
 
   const archived = Boolean(policy.archived_at);
-  const v = policy.latest_version;
+  const v = policy.current_version;
+  const activeVersion = policy.versions.find((x) => x.id === policy.active_version_id);
+  const pending = policy.versions[0] && policy.versions[0].id !== policy.active_version_id ? policy.versions[0] : undefined;
   const knowledge = KNOWLEDGE_STATUS[policy.status];
   const showOwner = policy.audience !== "PUBLIC";
   const showHelpRoute = policy.audience !== "INTERNAL";
@@ -128,6 +141,11 @@ export function PolicyDetailPage() {
               {!archived && (
                 <Button variant="ghost" onClick={() => setConfirm("archive")}>
                   Archive policy
+                </Button>
+              )}
+              {!archived && (
+                <Button variant="secondary" onClick={() => setUploadingVersion(true)}>
+                  Upload new version
                 </Button>
               )}
               <Button variant="secondary" onClick={() => setEditing(true)}>
@@ -169,6 +187,32 @@ export function PolicyDetailPage() {
         <p className={`pc-knowledge pc-knowledge--${knowledge.tone}`}>
           <span aria-hidden="true">{knowledge.icon}</span> {knowledge.text}
         </p>
+        {activeVersion && !archived && (
+          <p className="pc-auth__muted pc-auth__spaced">
+            Answers use version {activeVersion.version}
+            {activeVersion.activated_at ? `, approved ${formatLongDate(activeVersion.activated_at)}` : ""}
+            {activeVersion.activated_by ? ` by ${activeVersion.activated_by}` : ""}.
+            {pending && pending.status !== "FAILED" && ` Version ${pending.version} stays out of use until it is approved.`}
+          </p>
+        )}
+      </section>
+
+      <section className="pc-card" aria-labelledby="versions-heading">
+        <h2 id="versions-heading" className="pc-card__title">
+          Version history
+        </h2>
+        <VersionHistory<PolicyDetail>
+          base={base}
+          versions={policy.versions}
+          activeVersion={activeVersion}
+          isAdmin={isAdmin}
+          userEmail={user?.email ?? ""}
+          archived={archived}
+          onChanged={(updated, message) => {
+            setPolicy(updated);
+            setNotice(message);
+          }}
+        />
       </section>
 
       <section className="pc-card" aria-labelledby="details-heading">
@@ -265,6 +309,17 @@ export function PolicyDetailPage() {
           busy={confirmBusy}
           error={confirmError}
           destructive={false}
+        />
+      )}
+      {uploadingVersion && (
+        <NewVersionDialog<PolicyDetail>
+          base={base}
+          onClose={() => setUploadingVersion(false)}
+          onUploaded={(updated) => {
+            setPolicy(updated);
+            setUploadingVersion(false);
+            setNotice(`Version ${updated.versions[0]?.version} uploaded. It is being processed.`);
+          }}
         />
       )}
       {editing && (

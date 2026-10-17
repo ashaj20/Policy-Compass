@@ -152,8 +152,8 @@ export function UploadPolicyPage() {
             </div>
           </dl>
           <p className="pc-auth__muted">
-            Processing policy… It won't be used to answer questions until processing has finished and an
-            administrator has activated it.
+            Processing policy… It won't be used to answer questions until it has been processed, marked ready
+            and approved by an administrator.
           </p>
           <div className="pc-logo-setting__buttons">
             <Link to={`/internal/policies/${uploaded.id}`} className="pc-button pc-button--primary">

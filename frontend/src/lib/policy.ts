@@ -1,15 +1,17 @@
 /** Policy types and the upload rules (mirrors backend/app/policies/validation.py). */
 
 export type Audience = "INTERNAL" | "PUBLIC" | "BOTH";
-export type VersionStatus = "DRAFT" | "PROCESSING" | "READY" | "SUPERSEDED" | "ARCHIVED" | "FAILED";
+/** Version lifecycle (REVIEW F-decisions): Processing → Draft → Ready – awaiting approval → Active → Superseded. */
+export type VersionStatus = "PROCESSING" | "DRAFT" | "READY" | "ACTIVE" | "SUPERSEDED" | "FAILED" | "ARCHIVED";
 
 export const STATUS_LABELS: Record<VersionStatus, string> = {
-  DRAFT: "Draft",
   PROCESSING: "Processing",
-  READY: "Ready",
+  DRAFT: "Draft",
+  READY: "Ready – awaiting approval",
+  ACTIVE: "Active",
   SUPERSEDED: "Superseded",
-  ARCHIVED: "Archived",
   FAILED: "Failed",
+  ARCHIVED: "Archived",
 };
 
 export interface PolicyVersion {
@@ -21,6 +23,15 @@ export interface PolicyVersion {
   file_size: number;
   uploaded_at: string;
   uploaded_by: string | null;
+  submitted_at?: string | null;
+  submitted_by?: string | null;
+  activated_at?: string | null;
+  activated_by?: string | null;
+  superseded_at?: string | null;
+  superseded_by?: string | null;
+  rejected_at?: string | null;
+  rejected_by?: string | null;
+  rejection_reason?: string | null;
 }
 
 export interface Policy {

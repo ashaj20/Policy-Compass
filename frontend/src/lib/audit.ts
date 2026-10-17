@@ -29,6 +29,7 @@ const FIELD: Record<string, string> = {
   category: "Category",
   audience: "Audience",
   source: "Source",
+  active_version: "Active version",
 };
 const AUDIENCE: Record<string, string> = { INTERNAL: "Internal", PUBLIC: "Public", BOTH: "Both" };
 
@@ -84,6 +85,26 @@ export function describeEvent(e: AuditEvent): AuditDescription {
       return { summary: `archived the policy ${e.object_label}`, changes: [] };
     case "POLICY_RESTORED":
       return { summary: `restored the policy ${e.object_label}`, changes: [] };
+    case "POLICY_VERSION_CREATED":
+      return { summary: `uploaded version ${e.new?.version} of ${e.object_label}`, changes: [] };
+    case "POLICY_VERSION_REPLACED":
+      return {
+        summary: `replaced unpublished version ${e.previous?.version} of ${e.object_label} with version ${e.new?.version}`,
+        changes: [],
+      };
+    case "POLICY_VERSION_SUBMITTED":
+      return { summary: `marked version ${e.new?.version} of ${e.object_label} ready for approval`, changes: [] };
+    case "POLICY_VERSION_WITHDRAWN":
+      return { summary: `withdrew version ${e.previous?.version} of ${e.object_label} back to draft`, changes: [] };
+    case "POLICY_VERSION_REJECTED":
+      return {
+        summary: `sent version ${e.previous?.version} of ${e.object_label} back to draft: “${e.new?.reason}”`,
+        changes: [],
+      };
+    case "POLICY_ACTIVATED":
+      return { summary: `approved and activated ${e.object_label}`, changes: diff(e) };
+    case "POLICY_SUPERSEDED":
+      return { summary: `superseded version ${e.previous?.version} of ${e.object_label}`, changes: [] };
     case "POLICY_EDITED":
       return { summary: `edited the policy ${e.object_label}`, changes: diff(e) };
     default:

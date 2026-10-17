@@ -27,14 +27,22 @@ class Audience(StrEnum):
 
 
 class VersionStatus(StrEnum):
-    """Lifecycle of one uploaded version (Spec §7, REVIEW C2)."""
+    """Lifecycle of one uploaded version (Spec §7; workflow agreed in REVIEW F-decisions).
 
-    DRAFT = "DRAFT"
+    PROCESSING -> DRAFT (processed, awaiting review) or FAILED
+    DRAFT -> READY ("Ready - awaiting approval", marked by any member)
+    READY -> ACTIVE (approved by an administrator) or back to DRAFT (rejected / withdrawn)
+    ACTIVE -> SUPERSEDED (a newer version was approved)
+    ARCHIVED is shown for archived policies; it is never stored on a version.
+    """
+
     PROCESSING = "PROCESSING"
+    DRAFT = "DRAFT"
     READY = "READY"
+    ACTIVE = "ACTIVE"
     SUPERSEDED = "SUPERSEDED"
-    ARCHIVED = "ARCHIVED"
     FAILED = "FAILED"
+    ARCHIVED = "ARCHIVED"
 
 
 class Policy(Base):
@@ -90,10 +98,20 @@ class PolicyVersion(Base):
     __tablename__ = "policy_versions"
     __table_args__ = (
         CheckConstraint(
-            "status IN ('DRAFT', 'PROCESSING', 'READY', 'SUPERSEDED', 'ARCHIVED', 'FAILED')",
+            "status IN ('PROCESSING', 'DRAFT', 'READY', 'ACTIVE', 'SUPERSEDED', 'FAILED')",
             name="status",
         ),
+        CheckConstraint(
+            "status <> 'ACTIVE' OR (activated_at IS NOT NULL)", name="active_has_activation"
+        ),
         UniqueConstraint("policy_id", "version_label", name="uq_policy_versions_policy_label"),
+        # A policy can never have more than one active version (AC-04).
+        Index(
+            "uq_policy_versions_one_active",
+            "policy_id",
+            unique=True,
+            postgresql_where=text("status = 'ACTIVE'"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
@@ -122,5 +140,29 @@ class PolicyVersion(Base):
         DateTime(timezone=True), server_default=func.clock_timestamp()
     )
 
+    # Review and approval (REVIEW F-decisions). Who and when, for every step.
+    submitted_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    activated_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    superseded_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    superseded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The most recent rejection, shown while the version is back in Draft.
+    rejected_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    rejected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    rejection_reason: Mapped[str | None] = mapped_column(String(500))
+
     policy: Mapped[Policy] = relationship(back_populates="versions")
-    uploaded_by: Mapped[User | None] = relationship()
+    uploaded_by: Mapped[User | None] = relationship(foreign_keys=[uploaded_by_id])
+    submitted_by: Mapped[User | None] = relationship(foreign_keys=[submitted_by_id])
+    activated_by: Mapped[User | None] = relationship(foreign_keys=[activated_by_id])
+    superseded_by: Mapped[User | None] = relationship(foreign_keys=[superseded_by_id])
+    rejected_by: Mapped[User | None] = relationship(foreign_keys=[rejected_by_id])

@@ -174,3 +174,53 @@ Stories run in order as the Story Design requires. **New/extended items are in b
 
 Security tests for AC-03, AC-04, AC-11 and AC-12 are written with the story that adds each boundary, not left until Epic 8.
 Epic 8 then makes the suite complete and runs the evaluation set.
+
+---
+
+## F. Policy approval workflow (raised 17 Oct 2026) [DECIDED, see F-decisions]
+
+**Proposal:** *New* when first uploaded → a **staff member** changes it to *Ready – awaiting approval* → an **administrator** approves → *Published*.
+
+This adds a human review step, done by staff, before the admin approval agreed in A1. It conflicts with or extends the source documents as follows.
+
+| # | Proposal vs. source documents | Conflict | Needs a decision |
+|---|---|---|---|
+| F1 | Staff mark a version "Ready" | **Direct conflict.** Spec §3.2 says staff "cannot upload or modify policies". Add. Req §1 says staff "must not be able to change … policy content". Spec §39 says the beta doesn't need "complicated approval hierarchies". | Who may do the review step: every staff member, a new "Reviewer" role, or administrators only? |
+| F2 | Status names *New / Ready – awaiting approval / Published* | Spec §7 and Add. Req §2 list *Draft, Processing, Ready, Superseded, Archived, Failed*. In the spec, "Ready" means *successfully processed*, not *reviewed by a person*. | Confirm the new names replace the spec's names in the UI. |
+| F3 | Where automatic processing fits | The proposal doesn't mention processing or *Failed*. The spec requires automatic processing and validation before a version can be used, and a failed update must never replace the active version (AC-04). | Proposed: processing runs automatically while the version is *New*. A version can only be marked ready once processing succeeded. If processing fails, the version shows *Failed*. |
+| F4 | Same person submits and approves? | Not covered. In a small organisation the only administrator might do both steps. | Must review and approval be done by different people? |
+| F5 | Sending back | Not covered. | Can an administrator reject a version back to *New* with a reason? Can a reviewer withdraw it? |
+| F6 | First version vs. later versions | A1 already says every version needs approval, including the first. | Confirm the workflow applies to every version. |
+| F7 | "Published" wording | On the public side, "published" could be read as "public". | Proposed: *Published* means "live for its audience". Internal policies show *Published* too, with the Internal badge alongside. |
+| F8 | Staff visibility | C7 / US-022 currently let staff see Ready policies only. Reviewers would need to see *New* versions to review them. | Follows from F1. |
+
+**Proposed data model (no change to anything already agreed):** keep two separate facts on each version instead of one overloaded status.
+- **Processing:** Processing → Processed / Failed (automatic).
+- **Approval:** New → Awaiting approval → Published → Superseded (people).
+- The UI shows one combined label: *Processing*, *Failed*, *New*, *Ready – awaiting approval*, *Published*, *Superseded*, plus *Archived* at policy level.
+
+**Retrieval rule becomes:** only the **Published** version of a non-archived policy, permitted for the requester's audience. The rule is the same; the name changes from "active READY".
+
+**Audit additions:**
+- Version submitted for approval (who, when).
+- Approval rejected (who, when, reason).
+- Plus the already-agreed version activated / superseded events, renamed *published* / *superseded*.
+
+**Effect on code already built:** small.
+- Uploads currently start in `PROCESSING` and the list/detail show `Ready`.
+- One migration adds the approval field. Labels and staff visibility are adjusted in the same story (US-010A).
+
+### F-decisions (17 Oct 2026)
+These replace the "Proposed data model" above and extend A1.
+
+- **Statuses (spec names kept, plus Active):** PROCESSING → DRAFT → READY ("Ready – awaiting approval") → ACTIVE → SUPERSEDED. FAILED if processing fails. ARCHIVED stays at policy level.
+  - DRAFT now means "processed successfully, not yet reviewed". It is the user's "New".
+- **F1 Review step:** **any member, staff or admin,** may mark a DRAFT version Ready. This deliberately extends Spec §3.2 for this one action. Staff still cannot upload, edit, approve, archive or change policy details.
+- **F4:** the same person may mark ready and approve. An admin can do both.
+- **F5:** an administrator can **reject** a Ready version back to Draft with a **required reason**, which is audited and shown on the policy. The person who marked it ready, or an admin, can **withdraw** it back to Draft.
+- **F6:** applies to every version, including the first (as A1).
+- **Approval:** administrators only. Approving makes the version ACTIVE and records `activated_by` and `activated_at`. The previous ACTIVE version becomes SUPERSEDED and records `superseded_by` and `superseded_at`. Both events are audited in the same transaction.
+- **One active version:** the database allows at most one ACTIVE version per policy (partial unique index).
+- **F8 Staff visibility:** staff see non-archived policies that have an Active version, plus versions waiting for review (Draft/Ready), so they can review them. They never see Processing-only or Failed-only uploads.
+- **Retrieval:** only the ACTIVE version of a non-archived policy permitted for the requester's audience.
+- **New version while another is pending:** the older pending version (never active) becomes SUPERSEDED and is kept for history. There is only ever one version in progress.

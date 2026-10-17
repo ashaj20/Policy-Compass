@@ -9,7 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, ValidationError, field_validator
 
 from app.deps import AdminOf, AppSettings, DbSession, FileStorage, MemberOf
-from app.errors import AppError
+from app.errors import AppError, NotFound
 from app.models import Audience, Policy, PolicyVersion, Role, VersionStatus
 from app.policies import service
 from app.policies.validation import (
@@ -47,6 +47,15 @@ class VersionOut(BaseModel):
     file_size: int
     uploaded_at: datetime
     uploaded_by: str | None
+    submitted_at: datetime | None = None
+    submitted_by: str | None = None
+    activated_at: datetime | None = None
+    activated_by: str | None = None
+    superseded_at: datetime | None = None
+    superseded_by: str | None = None
+    rejected_at: datetime | None = None
+    rejected_by: str | None = None
+    rejection_reason: str | None = None
 
 
 class PolicyOut(BaseModel):
@@ -60,6 +69,10 @@ class PolicyOut(BaseModel):
     latest_version: VersionOut
 
 
+def _email(user) -> str | None:
+    return user.email if user else None
+
+
 def version_out(v: PolicyVersion) -> VersionOut:
     return VersionOut(
         id=str(v.id),
@@ -69,7 +82,16 @@ def version_out(v: PolicyVersion) -> VersionOut:
         original_filename=v.original_filename,
         file_size=v.file_size,
         uploaded_at=v.uploaded_at,
-        uploaded_by=v.uploaded_by.email if v.uploaded_by else None,
+        uploaded_by=_email(v.uploaded_by),
+        submitted_at=v.submitted_at,
+        submitted_by=_email(v.submitted_by),
+        activated_at=v.activated_at,
+        activated_by=_email(v.activated_by),
+        superseded_at=v.superseded_at,
+        superseded_by=_email(v.superseded_by),
+        rejected_at=v.rejected_at if v.status == VersionStatus.DRAFT else None,
+        rejected_by=_email(v.rejected_by) if v.status == VersionStatus.DRAFT else None,
+        rejection_reason=v.rejection_reason if v.status == VersionStatus.DRAFT else None,
     )
 
 
@@ -95,6 +117,9 @@ class PolicyListItem(BaseModel):
     version: str
     effective_date: date
     updated_at: datetime
+    # The newest version that isn't live yet (e.g. awaiting approval), if any.
+    pending_version: str | None = None
+    pending_status: str | None = None
     # Policy owners are configured in US-024.
     owner: str | None = None
 
@@ -122,7 +147,11 @@ def list_policies(
     )
     items = []
     for p in policies:
-        v = service.latest_version(p)
+        v = service.display_version(p)
+        pending = service.pending_version(p)
+        show_pending = pending is not None and pending.id != v.id and not p.is_archived
+        if staff_view and show_pending and not service.staff_can_read_version(pending):
+            show_pending = False
         items.append(
             PolicyListItem(
                 id=str(p.id),
@@ -133,6 +162,8 @@ def list_policies(
                 version=v.version_label,
                 effective_date=v.effective_date,
                 updated_at=p.updated_at,
+                pending_version=pending.version_label if show_pending else None,
+                pending_status=pending.status if show_pending else None,
             )
         )
     categories = (
@@ -230,6 +261,11 @@ class PolicyEditIn(BaseModel):
 class PolicyDetailOut(PolicyOut):
     status: str
     version_count: int
+    # The version the policy is known by (the active one, else the newest).
+    current_version: VersionOut
+    active_version_id: str | None
+    # Newest first. Staff only see versions they may read (active and awaiting review).
+    versions: list[VersionOut]
     archived_at: datetime | None = None
     archived_by: str | None = None
     # Configured in US-024.
@@ -237,11 +273,18 @@ class PolicyDetailOut(PolicyOut):
     help_route: str | None = None
 
 
-def policy_detail_out(p: Policy) -> PolicyDetailOut:
+def policy_detail_out(p: Policy, staff_view: bool = False) -> PolicyDetailOut:
+    active = service.active_version(p)
+    versions = [
+        v for v in reversed(p.versions) if not staff_view or service.staff_can_read_version(v)
+    ]
     return PolicyDetailOut(
         **policy_out(p).model_dump(),
         status=service.display_status(p),
         version_count=len(p.versions),
+        current_version=version_out(service.display_version(p)),
+        active_version_id=str(active.id) if active else None,
+        versions=[version_out(v) for v in versions],
         archived_at=p.archived_at,
         archived_by=p.archived_by.email if p.archived_by else None,
     )
@@ -249,10 +292,9 @@ def policy_detail_out(p: Policy) -> PolicyDetailOut:
 
 @router.get("/{policy_id}")
 def get_policy(policy_id: uuid.UUID, membership: MemberOf, db: DbSession) -> PolicyDetailOut:
-    policy = service.get_policy(
-        db, membership.organisation, policy_id, staff_view=membership.role != Role.ADMIN
-    )
-    return policy_detail_out(policy)
+    staff_view = membership.role != Role.ADMIN
+    policy = service.get_policy(db, membership.organisation, policy_id, staff_view=staff_view)
+    return policy_detail_out(policy, staff_view)
 
 
 @router.patch("/{policy_id}")
@@ -285,6 +327,8 @@ def download_version(
         db, membership.organisation, policy_id, staff_view=membership.role != Role.ADMIN
     )
     version = service.get_version(policy, version_id)
+    if membership.role != Role.ADMIN and not service.staff_can_read_version(version):
+        raise NotFound("This document is no longer available.")
     # The display name is already cleaned; quote it and offer an ASCII fallback.
     safe = version.original_filename.replace('"', "").encode("ascii", "replace").decode()
     return Response(
@@ -312,3 +356,119 @@ def restore_policy(policy_id: uuid.UUID, admin: AdminOf, db: DbSession) -> Polic
     service.restore_policy(db, policy, admin.user)
     db.refresh(policy)
     return policy_detail_out(policy)
+
+
+# --- Versions and approval (US-010A) ---
+
+
+class RejectIn(BaseModel):
+    reason: str
+
+    @field_validator("reason")
+    @classmethod
+    def valid_reason(cls, v: str) -> str:
+        v = " ".join((v or "").split())
+        if not v:
+            raise ValueError("Say why this version is being sent back")
+        if len(v) > 500:
+            raise ValueError("Use no more than 500 characters")
+        return v
+
+
+class NewVersionForm(BaseModel):
+    version: str
+    effective_date: date
+
+    _version = field_validator("version")(check_version_label)
+    _effective = field_validator("effective_date")(check_effective_date)
+
+
+def _member_policy(membership, db, policy_id) -> Policy:
+    return service.get_policy(
+        db, membership.organisation, policy_id, staff_view=membership.role != Role.ADMIN
+    )
+
+
+def _detail(db, policy: Policy, membership) -> PolicyDetailOut:
+    db.refresh(policy)
+    return policy_detail_out(policy, staff_view=membership.role != Role.ADMIN)
+
+
+@router.post("/{policy_id}/versions", status_code=status.HTTP_201_CREATED)
+def upload_new_version(
+    policy_id: uuid.UUID,
+    admin: AdminOf,
+    db: DbSession,
+    settings: AppSettings,
+    storage: FileStorage,
+    version: Annotated[str, Form()] = "",
+    effective_date: Annotated[str, Form()] = "",
+    file: UploadFile | None = None,
+) -> PolicyDetailOut:
+    try:
+        form = NewVersionForm.model_validate(
+            {"version": version, "effective_date": effective_date or None}
+        )
+    except ValidationError as exc:
+        raise RequestValidationError(exc.errors()) from None
+    if file is None or not file.filename:
+        msg = "Choose a PDF or Word document to upload"
+        raise AppError(
+            422, "validation_error", "Please check the highlighted fields.", {"file": msg}
+        )
+    policy = service.get_policy(db, admin.organisation, policy_id, staff_view=False)
+    data = file.file.read(settings.policy_max_bytes + 1)
+    service.upload_new_version(
+        db,
+        policy,
+        admin.user,
+        form.version,
+        form.effective_date,
+        file.filename,
+        data,
+        settings.policy_max_bytes,
+        storage,
+    )
+    return _detail(db, policy, admin)
+
+
+@router.post("/{policy_id}/versions/{version_id}/mark-ready")
+def mark_ready(
+    policy_id: uuid.UUID, version_id: uuid.UUID, membership: MemberOf, db: DbSession
+) -> PolicyDetailOut:
+    policy = _member_policy(membership, db, policy_id)
+    service.mark_ready(db, policy, service.get_version(policy, version_id), membership.user)
+    return _detail(db, policy, membership)
+
+
+@router.post("/{policy_id}/versions/{version_id}/withdraw")
+def withdraw(
+    policy_id: uuid.UUID, version_id: uuid.UUID, membership: MemberOf, db: DbSession
+) -> PolicyDetailOut:
+    policy = _member_policy(membership, db, policy_id)
+    service.withdraw(
+        db,
+        policy,
+        service.get_version(policy, version_id),
+        membership.user,
+        is_admin=membership.role == Role.ADMIN,
+    )
+    return _detail(db, policy, membership)
+
+
+@router.post("/{policy_id}/versions/{version_id}/reject")
+def reject(
+    policy_id: uuid.UUID, version_id: uuid.UUID, body: RejectIn, admin: AdminOf, db: DbSession
+) -> PolicyDetailOut:
+    policy = service.get_policy(db, admin.organisation, policy_id, staff_view=False)
+    service.reject(db, policy, service.get_version(policy, version_id), admin.user, body.reason)
+    return _detail(db, policy, admin)
+
+
+@router.post("/{policy_id}/versions/{version_id}/activate")
+def activate(
+    policy_id: uuid.UUID, version_id: uuid.UUID, admin: AdminOf, db: DbSession
+) -> PolicyDetailOut:
+    policy = service.get_policy(db, admin.organisation, policy_id, staff_view=False)
+    service.activate(db, policy, service.get_version(policy, version_id), admin.user)
+    return _detail(db, policy, admin)

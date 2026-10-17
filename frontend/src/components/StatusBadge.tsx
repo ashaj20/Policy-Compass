@@ -1,12 +1,13 @@
 import { STATUS_LABELS, type VersionStatus } from "../lib/policy";
 
 const ICONS: Record<VersionStatus, string> = {
-  DRAFT: "○",
   PROCESSING: "◐",
-  READY: "✓",
+  DRAFT: "○",
+  READY: "◷",
+  ACTIVE: "✓",
   SUPERSEDED: "↺",
-  ARCHIVED: "▣",
   FAILED: "✕",
+  ARCHIVED: "▣",
 };
 
 /** Policy/version status. Text and icon carry the meaning; colour only reinforces it. */

@@ -14,6 +14,21 @@ const membership = (role: "ADMIN" | "STAFF") => ({
 const admin = { id: "u1", email: "jane@example.org", memberships: [membership("ADMIN")] };
 const staff = { id: "u2", email: "john@example.org", memberships: [membership("STAFF")] };
 
+const activeVersion = {
+  id: "v1",
+  version: "3.2",
+  effective_date: "2026-09-01",
+  status: "ACTIVE",
+  original_filename: "Emergency Repairs Policy.pdf",
+  file_size: 2048,
+  uploaded_at: "2026-10-17T10:00:00Z",
+  uploaded_by: "jane@example.org",
+  submitted_at: "2026-10-17T11:00:00Z",
+  submitted_by: "john@example.org",
+  activated_at: "2026-10-17T12:00:00Z",
+  activated_by: "jane@example.org",
+};
+
 const detail = {
   id: "p1",
   name: "Emergency Repairs Policy",
@@ -22,24 +37,17 @@ const detail = {
   source: "Approved by the Board, August 2026",
   created_at: "2026-10-17T10:00:00Z",
   updated_at: "2026-10-17T10:00:00Z",
-  status: "READY",
+  status: "ACTIVE",
   version_count: 1,
   owner: null,
   help_route: null,
   archived_at: null as string | null,
   archived_by: null as string | null,
-  latest_version: {
-    id: "v1",
-    version: "3.2",
-    effective_date: "2026-09-01",
-    status: "READY",
-    original_filename: "Emergency Repairs Policy.pdf",
-    file_size: 2048,
-    uploaded_at: "2026-10-17T10:00:00Z",
-    uploaded_by: "jane@example.org",
-  },
+  latest_version: activeVersion,
+  current_version: activeVersion,
+  active_version_id: "v1" as string | null,
+  versions: [activeVersion] as Record<string, unknown>[],
 };
-
 const BASE = "/organisations/o1/policies/p1";
 
 describe("Policy detail", () => {
@@ -50,7 +58,7 @@ describe("Policy detail", () => {
     });
     renderApp("/internal/policies/p1");
     expect(await screen.findByRole("heading", { name: "Emergency Repairs Policy" })).toBeInTheDocument();
-    expect(screen.getByText("Version 3.2")).toBeInTheDocument();
+    expect(screen.getByText("Version 3.2", { selector: ".pc-version-meta span" })).toBeInTheDocument();
     expect(screen.getByText("Effective 01 September 2026")).toBeInTheDocument();
     expect(screen.getByText("Available to Policy Compass")).toBeInTheDocument();
     expect(screen.getByText("Approved by the Board, August 2026")).toBeInTheDocument();
@@ -58,7 +66,7 @@ describe("Policy detail", () => {
     expect(within(escalation).getByText("Policy owner")).toBeInTheDocument();
     // Internal-only policies have no public help route.
     expect(within(escalation).queryByText("Public help route")).not.toBeInTheDocument();
-    const download = screen.getByRole("link", { name: /Download/ });
+    const download = within(screen.getByRole("region", { name: "Document" })).getByRole("link", { name: /Download/ });
     expect(download).toHaveAttribute("href", `/api${BASE}/versions/v1/file`);
     expect(screen.getByRole("link", { name: "← Back to policies" })).toBeInTheDocument();
   });
@@ -66,7 +74,10 @@ describe("Policy detail", () => {
   it("explains when a policy is still processing", async () => {
     mockApi({
       "GET /auth/me": () => ({ status: 200, body: admin }),
-      [`GET ${BASE}`]: () => ({ status: 200, body: { ...detail, status: "PROCESSING" } }),
+      [`GET ${BASE}`]: () => ({
+        status: 200,
+        body: { ...detail, status: "PROCESSING", active_version_id: null, versions: [{ ...activeVersion, status: "PROCESSING" }] },
+      }),
     });
     renderApp("/internal/policies/p1");
     expect(await screen.findByText("Processing. Not yet used to answer questions.")).toBeInTheDocument();
