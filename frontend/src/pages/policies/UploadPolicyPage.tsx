@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Alert, AppShell, Button, ErrorState, Input, PageHeader } from "../../components";
+import { AudienceBadge } from "../../components/AudienceBadge";
 import { FileDropzone } from "../../components/FileDropzone";
 import { RadioGroup } from "../../components/RadioGroup";
 import { api, ApiError, uploadWithProgress } from "../../lib/api";
@@ -136,6 +137,12 @@ export function UploadPolicyPage() {
             <div>
               <dt>Document</dt>
               <dd>{v.original_filename}</dd>
+            </div>
+            <div>
+              <dt>Audience</dt>
+              <dd>
+                <AudienceBadge audience={uploaded.audience} />
+              </dd>
             </div>
             <div>
               <dt>Status</dt>

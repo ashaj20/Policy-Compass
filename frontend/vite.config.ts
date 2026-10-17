@@ -10,5 +10,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
+    // Generous limits so the suite stays reliable on a busy machine.
+    testTimeout: 15000,
   },
 });

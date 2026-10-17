@@ -997,3 +997,30 @@ a.pc-button {
 .pc-status--processing {
   color: var(--pc-info-700);
 }
+/* Badges: text + icon; colour is supplementary */
+.pc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pc-space-1);
+  padding: 2px var(--pc-space-2);
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: var(--pc-text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pc-badge--internal {
+  color: var(--pc-gray-700);
+  border-color: var(--pc-gray-400);
+  background: var(--pc-gray-50);
+}
+.pc-badge--public {
+  color: var(--pc-success-700);
+  border-color: var(--pc-success-700);
+  background: var(--pc-success-50);
+}
+.pc-badge--both {
+  color: var(--pc-info-700);
+  border-color: var(--pc-info-700);
+  background: var(--pc-info-50);
+}

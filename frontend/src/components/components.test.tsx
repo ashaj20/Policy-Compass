@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Alert, Button, ErrorState, Input, LoadingState } from ".";
+import { AudienceBadge } from "./AudienceBadge";
 
 describe("Input", () => {
   it("is labelled and links its error for screen readers", () => {
@@ -55,5 +56,21 @@ describe("States", () => {
     expect(onRetry).toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Go back" })).toBeInTheDocument();
     expect(screen.getByText("Reference: abc123")).toBeInTheDocument();
+  });
+});
+
+describe("AudienceBadge", () => {
+  it("names the audience in text, not just colour", () => {
+    render(
+      <>
+        <AudienceBadge audience="INTERNAL" />
+        <AudienceBadge audience="PUBLIC" />
+        <AudienceBadge audience="BOTH" />
+      </>,
+    );
+    expect(screen.getByText("Internal")).toBeInTheDocument();
+    expect(screen.getByText("Public")).toBeInTheDocument();
+    expect(screen.getByText("Both")).toBeInTheDocument();
+    expect(screen.getByText(/audience: staff only/)).toBeInTheDocument();
   });
 });

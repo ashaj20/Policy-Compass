@@ -88,6 +88,7 @@ describe("Upload policy", () => {
     expect(await screen.findByText("Policy uploaded successfully.")).toBeInTheDocument();
     expect(screen.getByText(/Processing policy/)).toBeInTheDocument();
     expect(screen.getByText("Processing")).toBeInTheDocument();
+    expect(screen.getByText("Internal", { selector: ".pc-badge" })).toBeInTheDocument();
 
     const [path, body] = uploadSpy.mock.calls[0] as unknown as [string, FormData];
     expect(path).toBe("/organisations/o1/policies");
