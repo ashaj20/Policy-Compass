@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Alert, AppShell, Button, PageHeader } from "../../components";
 import { AnswerCard } from "../../components/AnswerCard";
+import { InsufficientEvidenceCard } from "../../components/InsufficientEvidenceCard";
 import { QuestionInput } from "../../components/QuestionInput";
 import { api, ApiError } from "../../lib/api";
 import { currentMembership, useAuth } from "../../lib/auth";
@@ -99,12 +100,18 @@ export function AskPage() {
         )}
         {answer?.status === "ANSWERED" && <AnswerCard answer={answer} />}
         {answer && answer.status !== "ANSWERED" && (
-          <Alert tone="info" title="We couldn't find enough information to answer this.">
-            <p>
-              We searched the approved policies available to you, but they don't contain enough information to give a
-              reliable answer.
-            </p>
-          </Alert>
+          <InsufficientEvidenceCard
+            answer={answer}
+            audience="internal"
+            noContactHint={
+              membership.role === "ADMIN" && (
+                <p className="pc-field__hint">
+                  <Link to="/internal/contacts">Add a policy owner</Link> and assign it to policies so staff know who
+                  to ask.
+                </p>
+              )
+            }
+          />
         )}
         {answer && (
           <Button variant="secondary" onClick={askAnother} className="pc-auth__spaced">

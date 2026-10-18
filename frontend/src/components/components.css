@@ -1621,3 +1621,36 @@ a.pc-button {
   font-size: var(--pc-text-sm);
   color: var(--pc-text-muted);
 }
+
+/* Insufficient evidence and escalation (US-017) */
+.pc-insufficient {
+  margin-top: var(--pc-space-4);
+  display: grid;
+  gap: var(--pc-space-4);
+}
+.pc-insufficient__body {
+  background: var(--pc-surface);
+  border: 1px solid var(--pc-border);
+  border-left: 4px solid var(--pc-warning-700);
+  border-radius: var(--pc-radius-md);
+  padding: var(--pc-space-5);
+}
+.pc-insufficient__body > p {
+  margin: var(--pc-space-2) 0 0;
+}
+.pc-insufficient__note {
+  color: var(--pc-text-muted);
+}
+.pc-escalation {
+  margin-top: var(--pc-space-4);
+  padding-top: var(--pc-space-4);
+  border-top: 1px solid var(--pc-border-subtle);
+}
+.pc-escalation p {
+  margin: 0 0 var(--pc-space-1);
+}
+.pc-escalation .pc-button {
+  display: inline-flex;
+  margin-top: var(--pc-space-3);
+  text-decoration: none;
+}

@@ -128,7 +128,7 @@ def answer_model() -> StubAnswerModel:
 
 
 # A lower evidence threshold suits the simple test embedder's similarity scores.
-TEST_SETTINGS_OVERRIDES = {"retrieval_min_score": 0.3}
+TEST_SETTINGS_OVERRIDES = {"retrieval_min_score": 0.3, "escalation_min_score": 0.2}
 
 
 @pytest.fixture

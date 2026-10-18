@@ -58,16 +58,20 @@ class AnswerResult:
     answer: str | None = None
     citations: list[Citation] = field(default_factory=list)
     reason: Reason | None = None
-    # Policies that were searched (for knowledge gaps, US-033A), whatever the outcome.
+    # Policies related to the question, most relevant first, whatever the outcome. Used to find
+    # who to escalate to (US-017) and for knowledge gaps (US-033A).
     searched_policy_ids: list[str] = field(default_factory=list)
     from_cache: bool = False
 
 
+def _policy_ids(passages: list[RetrievedPassage]) -> list[str]:
+    """Distinct policy IDs, keeping the passages' best-first order."""
+    return list(dict.fromkeys(str(p.policy_id) for p in passages))
+
+
 def _insufficient(reason: Reason, passages: list[RetrievedPassage]) -> AnswerResult:
     return AnswerResult(
-        AnswerStatus.INSUFFICIENT_EVIDENCE,
-        reason=reason,
-        searched_policy_ids=sorted({str(p.policy_id) for p in passages}),
+        AnswerStatus.INSUFFICIENT_EVIDENCE, reason=reason, searched_policy_ids=_policy_ids(passages)
     )
 
 
@@ -137,7 +141,7 @@ def _check_reply(reply: ModelReply, passages: list[RetrievedPassage]) -> AnswerR
         AnswerStatus.ANSWERED,
         answer=answer,
         citations=[_citation(p) for p in cited],
-        searched_policy_ids=sorted({str(p.policy_id) for p in passages}),
+        searched_policy_ids=_policy_ids(passages),
     )
 
 
@@ -162,7 +166,9 @@ def answer_question(
     passages = [p for p in candidates if p.score >= settings.retrieval_min_score]
     passages = passages[: settings.answer_max_passages]
     if not passages:
-        return _insufficient(Reason.NO_EVIDENCE, candidates)
+        # Too weak to answer from, but loosely related policies still say who to ask.
+        related = [p for p in candidates if p.score >= settings.escalation_min_score]
+        return _insufficient(Reason.NO_EVIDENCE, related)
 
     key = _cache_key(requester, question, passages)
     cached = db.scalar(

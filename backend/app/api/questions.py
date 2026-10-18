@@ -1,13 +1,15 @@
 """Asking questions (US-016). Internal: signed-in members ask against their organisation's
-approved policies (everything permitted for the internal audience)."""
+approved policies (everything permitted for the internal audience). When we can't answer, the
+response says who to contact (US-017)."""
 
 from dataclasses import asdict
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, field_validator
 
+from app.answers.escalation import HelpContact, OwnerContact, find_escalation
 from app.answers.model import AnswerModel, get_answer_model
 from app.answers.service import AnswerResult, answer_question
 from app.deps import AppSettings, DbSession, MemberOf
@@ -50,6 +52,23 @@ class CitationOut(BaseModel):
     excerpt: str
 
 
+class OwnerEscalationOut(BaseModel):
+    kind: Literal["owner"] = "owner"
+    name: str
+    job_title: str | None
+    email: str | None
+    phone: str | None
+    policy_name: str
+
+
+class HelpRouteEscalationOut(BaseModel):
+    kind: Literal["help_route"] = "help_route"
+    label: str
+    route_type: str
+    destination: str
+    description: str | None
+
+
 class AnswerOut(BaseModel):
     id: str
     question: str
@@ -57,6 +76,8 @@ class AnswerOut(BaseModel):
     reason: str | None
     answer: str | None
     citations: list[CitationOut]
+    # Who to contact when we couldn't answer; null when answered or nothing is configured.
+    escalation: OwnerEscalationOut | HelpRouteEscalationOut | None = None
     asked_at: datetime
 
 
@@ -80,7 +101,20 @@ def save_question(
     return record
 
 
-def answer_out(q: Question) -> AnswerOut:
+def escalation_out(db, q: Question) -> OwnerEscalationOut | HelpRouteEscalationOut | None:
+    if q.status == "ANSWERED":
+        return None
+    contact = find_escalation(
+        db, q.organisation_id, Requester(q.requester), q.searched_policy_ids or []
+    )
+    if isinstance(contact, OwnerContact):
+        return OwnerEscalationOut(**contact.__dict__)
+    if isinstance(contact, HelpContact):
+        return HelpRouteEscalationOut(**contact.__dict__)
+    return None
+
+
+def answer_out(db, q: Question) -> AnswerOut:
     return AnswerOut(
         id=str(q.id),
         question=q.question,
@@ -88,6 +122,7 @@ def answer_out(q: Question) -> AnswerOut:
         reason=q.reason,
         answer=q.answer,
         citations=[CitationOut(**{k: c[k] for k in CitationOut.model_fields}) for c in q.citations],
+        escalation=escalation_out(db, q),
         asked_at=q.created_at,
     )
 
@@ -118,4 +153,4 @@ def ask(
         body.question,
         result,
     )
-    return answer_out(record)
+    return answer_out(db, record)

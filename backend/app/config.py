@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     # similarity with the local embedding model; ~0.75+ for good matches, ~0.5 for unrelated).
     retrieval_min_score: float = 0.6
     answer_max_passages: int = 4
+    # A weaker match than retrieval_min_score: too weak to answer from, but related enough to
+    # pick whose contact details to show when we can't answer (US-017).
+    # Measured with bge-small: related ("boiler servicing" vs repairs) ~0.58, unrelated
+    # ("rent date", "annual leave") 0.51-0.55.
+    escalation_min_score: float = 0.56
 
     # Sessions and one-time tokens
     session_days: int = 14

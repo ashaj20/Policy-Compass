@@ -1,4 +1,5 @@
-/** Questions and answers (US-016). */
+/** Questions and answers (US-016, US-017). */
+import type { RouteType } from "./contacts";
 
 export interface Citation {
   policy_id: string;
@@ -11,6 +12,11 @@ export interface Citation {
   excerpt: string;
 }
 
+/** Who to contact when we couldn't answer (US-017). Owners are internal-only. */
+export type Escalation =
+  | { kind: "owner"; name: string; job_title: string | null; email: string | null; phone: string | null; policy_name: string }
+  | { kind: "help_route"; label: string; route_type: RouteType; destination: string; description: string | null };
+
 export type AnswerStatus = "ANSWERED" | "INSUFFICIENT_EVIDENCE" | "ERROR";
 
 export interface Answer {
@@ -20,6 +26,7 @@ export interface Answer {
   reason: string | null;
   answer: string | null;
   citations: Citation[];
+  escalation: Escalation | null;
   asked_at: string;
 }
 
