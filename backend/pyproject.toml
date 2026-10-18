@@ -5,6 +5,7 @@ description = "Policy Compass beta API"
 requires-python = ">=3.13"
 dependencies = [
     "alembic>=1.20.0",
+    "anthropic>=1.15.0",
     "argon2-cffi>=25.1.0",
     "email-validator>=2.3.0",
     "fastapi>=0.143.2",

@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -24,6 +24,17 @@ class Settings(BaseSettings):
     resume_processing_on_startup: bool = True
     # Run the retention clean-up at start-up and then daily (off in tests).
     retention_schedule_enabled: bool = True
+
+    # Claude, for writing grounded answers (US-014). Decided 18 Oct 2026: Claude Haiku 5.5 to keep
+    # credit use low, and at most 100 Claude answers per organisation per day. The key is read from
+    # ANTHROPIC_API_KEY (backend/.env); without it, answers fall back to escalation.
+    anthropic_api_key: str | None = Field(
+        default=None, validation_alias=AliasChoices("ANTHROPIC_API_KEY", "PC_ANTHROPIC_API_KEY")
+    )
+    llm_model: str = "claude-haiku-5-5"
+    llm_daily_answer_cap: int = 100
+    llm_max_output_tokens: int = 1500
+    llm_timeout_seconds: float = 30.0
 
     # Sessions and one-time tokens
     session_days: int = 14
