@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     policy_max_bytes: int = 20 * 1024 * 1024
     # Re-queue uploads left mid-processing when the server starts (off in tests).
     resume_processing_on_startup: bool = True
+    # Run the retention clean-up at start-up and then daily (off in tests).
+    retention_schedule_enabled: bool = True
 
     # Sessions and one-time tokens
     session_days: int = 14

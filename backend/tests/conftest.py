@@ -23,6 +23,7 @@ TEST_DATABASE_URL = os.environ.get(
 os.environ["PC_DATABASE_URL"] = TEST_DATABASE_URL
 os.environ.setdefault("PC_ENVIRONMENT", "test")
 os.environ["PC_RESUME_PROCESSING_ON_STARTUP"] = "false"
+os.environ["PC_RETENTION_SCHEDULE_ENABLED"] = "false"
 
 from app.auth.security import hash_password  # noqa: E402
 from app.db import get_db  # noqa: E402

@@ -17,6 +17,7 @@ import { ActivityPage } from "./pages/settings/ActivityPage";
 import { BrandingPage } from "./pages/settings/BrandingPage";
 import { MembersPage } from "./pages/settings/MembersPage";
 import { OrganisationSettingsPage } from "./pages/settings/OrganisationSettingsPage";
+import { RetentionPage } from "./pages/settings/RetentionPage";
 import { CreateOrganisationPage } from "./pages/setup/CreateOrganisationPage";
 
 export function AppRoutes() {
@@ -125,6 +126,16 @@ export function AppRoutes() {
           <RequireAuth>
             <RequireOrganisation>
               <BrandingPage />
+            </RequireOrganisation>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/internal/settings/data"
+        element={
+          <RequireAuth>
+            <RequireOrganisation>
+              <RetentionPage />
             </RequireOrganisation>
           </RequireAuth>
         }

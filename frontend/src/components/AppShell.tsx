@@ -31,6 +31,7 @@ const NAV: NavGroup[] = [
       { to: "/internal/settings/branding", label: "Branding", adminOnly: true },
       { to: "/internal/settings/members", label: "Members", adminOnly: true },
       { to: "/internal/settings/activity", label: "Activity", adminOnly: true },
+      { to: "/internal/settings/data", label: "Data & retention" },
     ],
   },
 ];
