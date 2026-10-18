@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     llm_daily_answer_cap: int = 100
     llm_max_output_tokens: int = 1500
     llm_timeout_seconds: float = 30.0
+    # Evidence gate: Claude is only asked when a passage is at least this relevant (cosine
+    # similarity with the local embedding model; ~0.75+ for good matches, ~0.5 for unrelated).
+    retrieval_min_score: float = 0.6
+    answer_max_passages: int = 4
 
     # Sessions and one-time tokens
     session_days: int = 14

@@ -137,3 +137,28 @@ def test_running_twice_is_harmless(org, db):
         0,
         0,
     )
+
+
+def test_old_cached_answers_and_usage_are_removed(org, db):
+    from datetime import date
+
+    from app.models import AnswerCache, LlmUsage
+
+    _, org_id = org
+    db.add_all(
+        [
+            AnswerCache(
+                organisation_id=org_id,
+                cache_key="old",
+                result={},
+                created_at=datetime.now(UTC) - timedelta(days=40),
+            ),
+            AnswerCache(organisation_id=org_id, cache_key="fresh", result={}),
+            LlmUsage(organisation_id=org_id, day=date(2020, 1, 1), answers=5),
+            LlmUsage(organisation_id=org_id, day=datetime.now(UTC).date(), answers=1),
+        ]
+    )
+    db.flush()
+    report = run_retention(db)
+    assert report.cached_answers == 1 and report.usage_days == 1
+    assert set(db.scalars(select(AnswerCache.cache_key))) == {"fresh"}

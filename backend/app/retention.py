@@ -15,7 +15,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import delete, or_, text
 from sqlalchemy.orm import Session
 
-from app.models import AuditEvent, AuthToken, Invitation, UserSession
+from app.models import AnswerCache, AuditEvent, AuthToken, Invitation, LlmUsage, UserSession
 
 logger = logging.getLogger("policy_compass.retention")
 
@@ -23,6 +23,8 @@ AUDIT_YEARS = 6
 QUESTION_MONTHS = 12
 USED_TOKEN_DAYS = 30
 CLOSED_INVITATION_DAYS = 90
+ANSWER_CACHE_DAYS = 30
+USAGE_MONTHS = 12
 
 
 @dataclass(frozen=True)
@@ -85,6 +87,8 @@ class RetentionReport:
     auth_tokens: int = 0
     invitations: int = 0
     audit_events: int = 0
+    cached_answers: int = 0
+    usage_days: int = 0
 
 
 def run_retention(db: Session, now: datetime | None = None) -> RetentionReport:
@@ -110,6 +114,14 @@ def run_retention(db: Session, now: datetime | None = None) -> RetentionReport:
                 Invitation.expires_at < invite_cutoff,
             )
         )
+    ).rowcount
+
+    # Stored answers are refreshed regularly even when policies don't change.
+    report.cached_answers = db.execute(
+        delete(AnswerCache).where(AnswerCache.created_at < now - timedelta(days=ANSWER_CACHE_DAYS))
+    ).rowcount
+    report.usage_days = db.execute(
+        delete(LlmUsage).where(LlmUsage.day < (now - timedelta(days=30 * USAGE_MONTHS)).date())
     ).rowcount
 
     # Audit events are protected by a database trigger; only this documented clean-up may
