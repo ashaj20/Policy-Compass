@@ -245,6 +245,7 @@ def upload_policy(
         data,
         settings.policy_max_bytes,
         storage,
+        file.content_type,
     )
     db.refresh(policy)
     runner.submit(policy.versions[-1].id)
@@ -400,6 +401,8 @@ def download_version(
             "Content-Disposition": f'attachment; filename="{safe}"',
             "X-Content-Type-Options": "nosniff",
             "Cache-Control": "private, no-store",
+            # If a browser ever renders it inline, it gets no scripts and no same-origin access.
+            "Content-Security-Policy": "sandbox",
         },
     )
 
@@ -491,6 +494,7 @@ def upload_new_version(
         data,
         settings.policy_max_bytes,
         storage,
+        file.content_type,
     )
     runner.submit(new_version.id)
     return _detail(db, policy, admin)

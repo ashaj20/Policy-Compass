@@ -20,6 +20,7 @@ from app.api import (
 from app.config import get_settings
 from app.errors import install_error_handlers
 from app.frontend import mount_frontend
+from app.limits import BodySizeLimitMiddleware
 
 
 async def _retention_loop() -> None:
@@ -68,6 +69,13 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+    )
+    # Refuse oversized uploads before they are read (US-038). Policy files are the largest
+    # allowed body; a small margin covers the multipart form fields around the file.
+    app.add_middleware(
+        BodySizeLimitMiddleware,
+        max_bytes=settings.policy_max_bytes + 512 * 1024,
+        file_limit_mb=settings.policy_max_bytes // (1024 * 1024),
     )
     install_error_handlers(app)
     app.include_router(health.router, prefix="/api")

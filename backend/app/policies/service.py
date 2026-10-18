@@ -57,10 +57,11 @@ def _store_version(
     data: bytes,
     max_bytes: int,
     storage: Storage,
+    declared_type: str | None = None,
 ) -> PolicyVersion:
     """Validate and store an uploaded file as a new PROCESSING version (caller commits)."""
     try:
-        detected = detect_policy_file(filename, data, max_bytes)
+        detected = detect_policy_file(filename, data, max_bytes, declared_type)
     except FileRejected as exc:
         raise AppError(422, "invalid_file", str(exc), {"file": str(exc)}) from None
     key = storage.save(f"policies/{policy.organisation_id}/{policy.id}", data, detected.extension)
@@ -93,10 +94,11 @@ def upload_policy(
     data: bytes,
     max_bytes: int,
     storage: Storage,
+    declared_type: str | None = None,
 ) -> Policy:
     # Check the file before creating anything.
     try:
-        detect_policy_file(filename, data, max_bytes)
+        detect_policy_file(filename, data, max_bytes, declared_type)
     except FileRejected as exc:
         raise AppError(422, "invalid_file", str(exc), {"file": str(exc)}) from None
 
@@ -136,6 +138,7 @@ def upload_policy(
         data,
         max_bytes,
         storage,
+        declared_type,
     )
     key = version.storage_key
     record(
@@ -409,6 +412,7 @@ def upload_new_version(
     data: bytes,
     max_bytes: int,
     storage: Storage,
+    declared_type: str | None = None,
 ) -> PolicyVersion:
     """Add a new version alongside the active one. The active version stays live meanwhile."""
     _require_not_archived(policy)
@@ -434,7 +438,16 @@ def upload_new_version(
             )
 
     version = _store_version(
-        db, policy, actor, version_label, effective_date, filename, data, max_bytes, storage
+        db,
+        policy,
+        actor,
+        version_label,
+        effective_date,
+        filename,
+        data,
+        max_bytes,
+        storage,
+        declared_type,
     )
     _audit_policy(
         db,

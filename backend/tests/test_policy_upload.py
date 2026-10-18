@@ -81,7 +81,8 @@ def test_docx_is_accepted(org):
 )
 def test_unsupported_or_disguised_files_are_rejected(org, db, data, filename, message):
     jane, org_id = org
-    resp = upload(jane, org_id, data=data, filename=filename)
+    # A neutral declared type, so the contents check itself is exercised.
+    resp = upload(jane, org_id, data=data, filename=filename, ctype="application/octet-stream")
     assert resp.status_code == 422
     assert message in resp.json()["error"]["fields"]["file"]
     assert db.scalar(select(Policy)) is None
