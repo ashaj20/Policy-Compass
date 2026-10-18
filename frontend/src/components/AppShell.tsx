@@ -26,6 +26,7 @@ const NAV: NavGroup[] = [
   {
     items: [
       { to: "/internal/policies", label: "Policies" },
+      { to: "/internal/questions", label: "Questions" },
       { to: "/internal/contacts", label: "Contacts" },
     ],
   },

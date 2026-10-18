@@ -13,6 +13,8 @@ import { InternalHomePage } from "./pages/InternalHomePage";
 import { PoliciesPage } from "./pages/policies/PoliciesPage";
 import { PolicyDetailPage } from "./pages/policies/PolicyDetailPage";
 import { UploadPolicyPage } from "./pages/policies/UploadPolicyPage";
+import { QuestionDetailPage } from "./pages/questions/QuestionDetailPage";
+import { QuestionsPage } from "./pages/questions/QuestionsPage";
 import { PublicOrganisationPage } from "./pages/public/PublicOrganisationPage";
 import { ActivityPage } from "./pages/settings/ActivityPage";
 import { BrandingPage } from "./pages/settings/BrandingPage";
@@ -57,6 +59,26 @@ export function AppRoutes() {
           <RequireAuth>
             <RequireOrganisation>
               <AskPage />
+            </RequireOrganisation>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/internal/questions"
+        element={
+          <RequireAuth>
+            <RequireOrganisation>
+              <QuestionsPage />
+            </RequireOrganisation>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/internal/questions/:questionId"
+        element={
+          <RequireAuth>
+            <RequireOrganisation>
+              <QuestionDetailPage />
             </RequireOrganisation>
           </RequireAuth>
         }

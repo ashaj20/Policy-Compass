@@ -15,6 +15,7 @@ import pytest
 from sqlalchemy import select, update
 
 from app.models import (
+    AnswerFeedback,
     AuditEvent,
     DocumentChunk,
     HelpRoute,
@@ -24,6 +25,7 @@ from app.models import (
     Policy,
     PolicyOwner,
     PolicyVersion,
+    Question,
     Role,
     User,
     VersionStatus,
@@ -41,6 +43,7 @@ SECRETS = [
     "repairs@riverside.example",
     "john@example.org",
     "invitee@example.org",
+    "Secret question about boiler budgets",
 ]
 
 
@@ -89,6 +92,9 @@ def world(make_client, db):
         "id"
     ]
     audit_event = jane.get(f"{base}/audit-events").json()["events"][0]["id"]
+    question = jane.post(
+        f"{base}/questions", json={"question": "Secret question about boiler budgets?"}
+    ).json()["id"]
 
     mark = make_client("mark@example.org")
     org_b = mark.post("/api/organisations", json={"name": "Other Org", "slug": "other-org"}).json()[
@@ -103,6 +109,7 @@ def world(make_client, db):
         "membership_id": str(member.id),
         "invitation_id": invitation,
         "before": audit_event,
+        "question_id": question,
     }
     return {"mark": mark, "org_a": org_a, "org_b": org_b, "ids": ids_a}
 
@@ -162,6 +169,16 @@ def snapshot(db, org_id) -> dict:
         "audit": len(
             list(db.scalars(select(AuditEvent.id).where(AuditEvent.organisation_id == org_id)))
         ),
+        "questions": sorted(
+            (q.question, q.status)
+            for q in db.scalars(select(Question).where(Question.organisation_id == org_id))
+        ),
+        "feedback": sorted(
+            (str(f.question_id), f.helpful, f.reason)
+            for f in db.scalars(
+                select(AnswerFeedback).where(AnswerFeedback.organisation_id == org_id)
+            )
+        ),
         "chunks": len(
             list(
                 db.scalars(select(DocumentChunk.id).where(DocumentChunk.organisation_id == org_id))
@@ -186,6 +203,7 @@ def call(client, method, url):
                 "destination": "x@example.org",
                 "reason": "hijack",
                 "audience": "PUBLIC",
+                "helpful": False,
             },
         )
     return client.request(method, url)

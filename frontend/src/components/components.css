@@ -1608,7 +1608,38 @@ a.pc-button {
   background: var(--pc-surface);
   border: 1px solid var(--pc-border-subtle);
   border-radius: var(--pc-radius-sm);
+}
+.pc-citation__toggle {
+  display: grid;
+  gap: 2px;
+  width: 100%;
   padding: var(--pc-space-3) var(--pc-space-4);
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--pc-radius-sm);
+}
+.pc-citation__toggle:hover {
+  background: var(--pc-primary-50);
+}
+.pc-citation__action {
+  margin-top: var(--pc-space-1);
+  font-size: var(--pc-text-sm);
+  font-weight: 600;
+  color: var(--pc-brand-strong);
+}
+.pc-citation__source {
+  padding: 0 var(--pc-space-4) var(--pc-space-3);
+}
+.pc-citation__excerpt {
+  margin: var(--pc-space-2) 0 var(--pc-space-3);
+  padding: var(--pc-space-3);
+  border-left: 3px solid var(--pc-border);
+  background: var(--pc-gray-25);
+  white-space: pre-line;
 }
 .pc-citation p {
   margin: 0;
@@ -1653,4 +1684,75 @@ a.pc-button {
   display: inline-flex;
   margin-top: var(--pc-space-3);
   text-decoration: none;
+}
+
+.pc-tag--ok {
+  margin-left: 0;
+  border-color: var(--pc-success-700);
+  color: var(--pc-success-700);
+  background: var(--pc-success-50);
+}
+
+/* Feedback (US-020) */
+.pc-feedback {
+  border-top: 1px solid var(--pc-border-subtle);
+  padding-top: var(--pc-space-3);
+}
+.pc-feedback__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pc-space-3);
+}
+.pc-feedback__question {
+  font-weight: 600;
+}
+.pc-feedback__buttons {
+  display: flex;
+  gap: var(--pc-space-2);
+}
+.pc-feedback__buttons .pc-chip {
+  min-width: 64px;
+  min-height: 36px;
+}
+.pc-chip[aria-pressed="true"] {
+  background: var(--pc-brand);
+  border-color: var(--pc-brand);
+  color: var(--pc-gray-0);
+}
+.pc-feedback__reasons {
+  margin: var(--pc-space-3) 0 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: var(--pc-space-2);
+}
+.pc-radio {
+  display: flex;
+  align-items: center;
+  gap: var(--pc-space-2);
+}
+
+/* Question history (US-019) */
+.pc-history {
+  list-style: none;
+  margin: var(--pc-space-4) 0;
+  padding: 0;
+}
+.pc-history__item {
+  padding: var(--pc-space-3) 0;
+  border-bottom: 1px solid var(--pc-border-subtle);
+}
+.pc-history__question {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.pc-history__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pc-space-1) var(--pc-space-3);
+  margin-top: var(--pc-space-1);
+  font-size: var(--pc-text-sm);
+  color: var(--pc-text-muted);
 }

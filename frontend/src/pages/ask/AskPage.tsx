@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { Alert, AppShell, Button, PageHeader } from "../../components";
-import { AnswerCard } from "../../components/AnswerCard";
-import { InsufficientEvidenceCard } from "../../components/InsufficientEvidenceCard";
+import { QuestionResult } from "../../components/QuestionResult";
 import { QuestionInput } from "../../components/QuestionInput";
 import { api, ApiError } from "../../lib/api";
 import { currentMembership, useAuth } from "../../lib/auth";
@@ -98,21 +97,7 @@ export function AskPage() {
             {error.errorId && <p>Reference: {error.errorId}</p>}
           </Alert>
         )}
-        {answer?.status === "ANSWERED" && <AnswerCard answer={answer} />}
-        {answer && answer.status !== "ANSWERED" && (
-          <InsufficientEvidenceCard
-            answer={answer}
-            audience="internal"
-            noContactHint={
-              membership.role === "ADMIN" && (
-                <p className="pc-field__hint">
-                  <Link to="/internal/contacts">Add a policy owner</Link> and assign it to policies so staff know who
-                  to ask.
-                </p>
-              )
-            }
-          />
-        )}
+        {answer && <QuestionResult answer={answer} />}
         {answer && (
           <Button variant="secondary" onClick={askAnother} className="pc-auth__spaced">
             Ask another question

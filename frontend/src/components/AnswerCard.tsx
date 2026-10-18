@@ -1,15 +1,39 @@
+import { useId, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { formatLongDate } from "../lib/format";
 import type { Answer, Citation } from "../lib/questions";
 
-/** One source an answer relied on: policy, version, section and effective date. */
-export function CitationCard({ citation }: { citation: Citation }) {
+/**
+ * One source an answer relied on (US-018): policy, version, section and effective date. Opening
+ * it shows the exact passage that was used, so people can check the answer for themselves.
+ */
+export function CitationCard({ citation, policyHref }: { citation: Citation; policyHref?: string }) {
+  const id = useId();
+  const [open, setOpen] = useState(false);
+  const where = [citation.section && `Section: ${citation.section}`, citation.page && `Page ${citation.page}`]
+    .filter(Boolean)
+    .join(" · ");
   return (
     <li className="pc-citation">
-      <p className="pc-citation__policy">{citation.policy_name}</p>
-      <p className="pc-citation__meta">
-        Version {citation.version_label} · Effective {formatLongDate(citation.effective_date)}
-      </p>
-      {citation.section && <p className="pc-citation__section">Section: {citation.section}</p>}
+      <button
+        type="button"
+        className="pc-citation__toggle"
+        aria-expanded={open}
+        aria-controls={`${id}-source`}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className="pc-citation__policy">{citation.policy_name}</span>
+        <span className="pc-citation__meta">
+          Version {citation.version_label} · Effective {formatLongDate(citation.effective_date)}
+        </span>
+        {where && <span className="pc-citation__section">{where}</span>}
+        <span className="pc-citation__action">{open ? "Hide source" : "View source"}</span>
+      </button>
+      <div id={`${id}-source`} className="pc-citation__source" hidden={!open}>
+        <p className="pc-field__hint">The passage this answer used:</p>
+        <blockquote className="pc-citation__excerpt">{citation.excerpt}</blockquote>
+        {policyHref && <Link to={policyHref}>Open the {citation.policy_name}</Link>}
+      </div>
     </li>
   );
 }
@@ -18,7 +42,16 @@ export function CitationCard({ citation }: { citation: Citation }) {
  * A grounded answer (US-016). The answer and its sources are visually distinct (UX brief §12),
  * and only sources that actually supported the answer are listed.
  */
-export function AnswerCard({ answer }: { answer: Answer }) {
+export function AnswerCard({
+  answer,
+  policyHref,
+  footer,
+}: {
+  answer: Answer;
+  /** Where a source's policy can be opened (internal only; the public get the excerpt). */
+  policyHref?: (citation: Citation) => string;
+  footer?: ReactNode;
+}) {
   return (
     <article className="pc-answer" aria-labelledby={`answer-${answer.id}`}>
       <p className="pc-answer__question">
@@ -38,10 +71,11 @@ export function AnswerCard({ answer }: { answer: Answer }) {
         </h3>
         <ul className="pc-citations">
           {answer.citations.map((c, i) => (
-            <CitationCard key={`${c.version_id}-${c.section}-${i}`} citation={c} />
+            <CitationCard key={`${c.version_id}-${c.section}-${i}`} citation={c} policyHref={policyHref?.(c)} />
           ))}
         </ul>
       </section>
+      {footer}
     </article>
   );
 }
