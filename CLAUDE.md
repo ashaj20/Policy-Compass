@@ -42,6 +42,8 @@ Implement stories one at a time, in the order in `docs/REVIEW.md` section E. For
 ## Non-negotiable rules
 - Authorisation is enforced server-side on every endpoint. The UI is never the security boundary.
 - Every query on tenant data is scoped by `organisation_id`. Cross-tenant access must fail (AC-11).
+  `tests/test_tenant_isolation.py` sweeps every organisation-scoped route automatically; a new path parameter must be
+  added to its ID map or the sweep fails.
 - Retrieval only uses the **active**, READY version of non-archived policies whose audience permits the requester.
   Public requests never see INTERNAL content, internal owners, members, questions or audit data (AC-03, AC-12).
 - Activation is always a manual admin action; record who and when, and write the audit event in the same
