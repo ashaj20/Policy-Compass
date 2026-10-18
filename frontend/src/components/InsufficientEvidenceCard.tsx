@@ -27,7 +27,7 @@ export function InsufficientEvidenceCard({
   audience,
   noContactHint,
 }: {
-  answer: Answer;
+  answer: Pick<Answer, "id" | "question" | "reason" | "escalation">;
   audience: "internal" | "public";
   /** Extra guidance when no contact is configured, e.g. a link for administrators. */
   noContactHint?: ReactNode;

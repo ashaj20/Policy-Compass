@@ -237,6 +237,9 @@ def test_public_slug_works_and_exposes_only_public_fields(make_client, client):
         "logo_url": None,
         "primary_colour": "#1f5aa6",
         "brand_text_colour": "#ffffff",
+        "accepting_questions": False,
+        "topics": [],
+        "help_route": None,
     }
     assert "jane@example.org" not in resp.text
 

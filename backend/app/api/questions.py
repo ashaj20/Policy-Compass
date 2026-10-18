@@ -269,12 +269,8 @@ def my_question(question_id: uuid.UUID, membership: MemberOf, db: DbSession) -> 
     return answer_out(db, _own_question(db, membership, question_id))
 
 
-@router.put("/questions/{question_id}/feedback")
-def give_feedback(
-    question_id: uuid.UUID, body: FeedbackIn, membership: MemberOf, db: DbSession
-) -> FeedbackOut:
-    """Was this answer helpful? (US-020). Stored only; it never changes policies or answers."""
-    q = _own_question(db, membership, question_id)
+def store_feedback(db, q: Question, body: FeedbackIn) -> FeedbackOut:
+    """Record (or change) feedback on an answer. Stored only; never changes policies or answers."""
     if q.status != "ANSWERED":
         raise AppError(409, "not_an_answer", "Feedback can only be given on answers.")
     reason = None if body.helpful else body.reason
@@ -286,3 +282,11 @@ def give_feedback(
     fb.updated_at = func.clock_timestamp()
     db.commit()
     return FeedbackOut(helpful=body.helpful, reason=reason)
+
+
+@router.put("/questions/{question_id}/feedback")
+def give_feedback(
+    question_id: uuid.UUID, body: FeedbackIn, membership: MemberOf, db: DbSession
+) -> FeedbackOut:
+    """Was this answer helpful? (US-020)."""
+    return store_feedback(db, _own_question(db, membership, question_id), body)

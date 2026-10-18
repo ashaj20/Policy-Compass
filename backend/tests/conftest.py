@@ -35,6 +35,7 @@ from app.email import MemoryEmailSender, get_email_sender  # noqa: E402
 from app.main import create_app  # noqa: E402
 from app.models import User  # noqa: E402
 from app.processing import InlineRunner, get_runner  # noqa: E402
+from app.public_limits import RateLimiter, get_public_limiter  # noqa: E402
 from app.rag.embeddings import HashingEmbedder, get_embedder  # noqa: E402
 from app.storage import LocalStorage, get_storage  # noqa: E402
 
@@ -132,7 +133,14 @@ TEST_SETTINGS_OVERRIDES = {"retrieval_min_score": 0.3, "escalation_min_score": 0
 
 
 @pytest.fixture
-def app(db, mailer, storage, runner, answer_model):
+def public_limiter() -> RateLimiter:
+    """A fresh per-test limiter with the real default limits."""
+    settings = Settings()
+    return RateLimiter(settings.public_questions_per_minute, settings.public_questions_per_hour)
+
+
+@pytest.fixture
+def app(db, mailer, storage, runner, answer_model, public_limiter):
     app = create_app()
     app.dependency_overrides[get_db] = lambda: db
     app.dependency_overrides[get_email_sender] = lambda: mailer
@@ -142,6 +150,7 @@ def app(db, mailer, storage, runner, answer_model):
     app.dependency_overrides[get_answer_model] = lambda: answer_model
     app.dependency_overrides[get_embedder] = lambda: HashingEmbedder()
     app.dependency_overrides[get_settings] = lambda: Settings(**TEST_SETTINGS_OVERRIDES)
+    app.dependency_overrides[get_public_limiter] = lambda: public_limiter
     return app
 
 

@@ -35,6 +35,7 @@ export function AppRoutes() {
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/invite" element={<InvitePage />} />
       <Route path="/p/:slug" element={<PublicOrganisationPage />} />
+      <Route path="/p/:slug/ask" element={<PublicOrganisationPage />} />
       <Route
         path={SETUP_PATH}
         element={

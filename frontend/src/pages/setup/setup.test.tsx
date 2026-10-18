@@ -156,7 +156,7 @@ describe("Public page", () => {
       "GET /auth/me": () => ({ status: 401, body: { error: { code: "not_authenticated", message: "x" } } }),
       "GET /public/organisations/riverside-housing": () => ({
         status: 200,
-        body: { name: "Riverside Housing", slug: "riverside-housing", website: null, logo_url: null, primary_colour: "#0b6e4f", brand_text_colour: "#ffffff" },
+        body: { name: "Riverside Housing", slug: "riverside-housing", website: null, logo_url: null, primary_colour: "#0b6e4f", brand_text_colour: "#ffffff", accepting_questions: false, topics: [], help_route: null },
       }),
     });
     renderApp("/p/riverside-housing");

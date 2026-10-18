@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     # Measured with bge-small: related ("boiler servicing" vs repairs) ~0.58, unrelated
     # ("rent date", "annual leave") 0.51-0.55.
     escalation_min_score: float = 0.56
+    # Per-visitor limits on anonymous public questions (US-027), so one visitor can't use up
+    # the organisation's daily answers.
+    public_questions_per_minute: int = 5
+    public_questions_per_hour: int = 30
 
     # Sessions and one-time tokens
     session_days: int = 14

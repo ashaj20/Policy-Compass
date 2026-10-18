@@ -1,15 +1,20 @@
 /** Questions and answers (US-016 to US-020). */
 import type { RouteType } from "./contacts";
 
-export interface Citation {
-  policy_id: string;
+/** What anyone, including the public, may see about a source. */
+export interface PublicCitation {
   policy_name: string;
-  version_id: string;
   version_label: string;
   effective_date: string;
   section: string | null;
   page: number | null;
   excerpt: string;
+}
+
+/** A source as staff see it, with the IDs needed to open the policy. */
+export interface Citation extends PublicCitation {
+  policy_id: string;
+  version_id: string;
 }
 
 /** Who to contact when we couldn't answer (US-017). Owners are internal-only. */
@@ -75,4 +80,16 @@ export function validateQuestion(value: string): string | undefined {
   if (!v) return "Enter a question to get started";
   if (v.length < 3) return "Please ask a fuller question";
   if (v.length > 1000) return "Please keep your question under 1000 characters";
+}
+
+/** A public answer (US-027): public-safe citations and only ever a public help route. */
+export interface PublicAnswer {
+  id: string;
+  question: string;
+  status: AnswerStatus;
+  reason: string | null;
+  answer: string | null;
+  citations: PublicCitation[];
+  escalation: Extract<Escalation, { kind: "help_route" }> | null;
+  feedback: Feedback | null;
 }
