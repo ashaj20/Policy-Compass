@@ -15,7 +15,15 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import delete, or_, text
 from sqlalchemy.orm import Session
 
-from app.models import AnswerCache, AuditEvent, AuthToken, Invitation, LlmUsage, UserSession
+from app.models import (
+    AnswerCache,
+    AuditEvent,
+    AuthToken,
+    Invitation,
+    LlmUsage,
+    Question,
+    UserSession,
+)
 
 logger = logging.getLogger("policy_compass.retention")
 
@@ -88,6 +96,7 @@ class RetentionReport:
     invitations: int = 0
     audit_events: int = 0
     cached_answers: int = 0
+    questions: int = 0
     usage_days: int = 0
 
 
@@ -114,6 +123,10 @@ def run_retention(db: Session, now: datetime | None = None) -> RetentionReport:
                 Invitation.expires_at < invite_cutoff,
             )
         )
+    ).rowcount
+
+    report.questions = db.execute(
+        delete(Question).where(Question.created_at < now - timedelta(days=30 * QUESTION_MONTHS))
     ).rowcount
 
     # Stored answers are refreshed regularly even when policies don't change.

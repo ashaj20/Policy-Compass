@@ -15,6 +15,7 @@ from app.api import (
     organisations,
     policies,
     public,
+    questions,
     retention,
 )
 from app.config import get_settings
@@ -86,6 +87,7 @@ def create_app() -> FastAPI:
     app.include_router(policies.router, prefix="/api")
     app.include_router(contacts.router, prefix="/api")
     app.include_router(dashboard.router, prefix="/api")
+    app.include_router(questions.router, prefix="/api")
     app.include_router(retention.router, prefix="/api")
     app.include_router(public.router, prefix="/api")
     if settings.frontend_dist:

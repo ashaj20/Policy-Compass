@@ -24,14 +24,18 @@ os.environ["PC_DATABASE_URL"] = TEST_DATABASE_URL
 os.environ.setdefault("PC_ENVIRONMENT", "test")
 os.environ["PC_RESUME_PROCESSING_ON_STARTUP"] = "false"
 os.environ["PC_RETENTION_SCHEDULE_ENABLED"] = "false"
+# Never use the real Claude key in tests (it lives in backend/.env); a blank key disables Claude.
+os.environ["ANTHROPIC_API_KEY"] = ""
 
+from app.answers.model import GroundedAnswer, ModelReply, get_answer_model  # noqa: E402
 from app.auth.security import hash_password  # noqa: E402
+from app.config import Settings, get_settings  # noqa: E402
 from app.db import get_db  # noqa: E402
 from app.email import MemoryEmailSender, get_email_sender  # noqa: E402
 from app.main import create_app  # noqa: E402
 from app.models import User  # noqa: E402
 from app.processing import InlineRunner, get_runner  # noqa: E402
-from app.rag.embeddings import HashingEmbedder  # noqa: E402
+from app.rag.embeddings import HashingEmbedder, get_embedder  # noqa: E402
 from app.storage import LocalStorage, get_storage  # noqa: E402
 
 
@@ -93,13 +97,51 @@ def process_inline(app, db, storage):
     return inline
 
 
+class StubAnswerModel:
+    """Stand-in for Claude in API tests: answers from the first passage, recording each call.
+
+    Tests can set `next_reply` to script a specific outcome.
+    """
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, list]] = []
+        self.next_reply: ModelReply | None = None
+
+    def answer(self, question, passages) -> ModelReply:
+        self.calls.append((question, passages))
+        if self.next_reply is not None:
+            return self.next_reply
+        return ModelReply(
+            GroundedAnswer(
+                sufficient=True,
+                conflict=False,
+                answer=f"According to the policy: {passages[0].text[:80]}",
+                cited_passages=["P1"],
+            ),
+            None,
+        )
+
+
 @pytest.fixture
-def app(db, mailer, storage, runner):
+def answer_model() -> StubAnswerModel:
+    return StubAnswerModel()
+
+
+# A lower evidence threshold suits the simple test embedder's similarity scores.
+TEST_SETTINGS_OVERRIDES = {"retrieval_min_score": 0.3}
+
+
+@pytest.fixture
+def app(db, mailer, storage, runner, answer_model):
     app = create_app()
     app.dependency_overrides[get_db] = lambda: db
     app.dependency_overrides[get_email_sender] = lambda: mailer
     app.dependency_overrides[get_storage] = lambda: storage
     app.dependency_overrides[get_runner] = lambda: runner
+    # Tests never call Claude or load the real embedding model.
+    app.dependency_overrides[get_answer_model] = lambda: answer_model
+    app.dependency_overrides[get_embedder] = lambda: HashingEmbedder()
+    app.dependency_overrides[get_settings] = lambda: Settings(**TEST_SETTINGS_OVERRIDES)
     return app
 
 

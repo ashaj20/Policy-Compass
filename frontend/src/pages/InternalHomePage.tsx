@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Alert, AppShell, ErrorState, PageHeader, Skeleton } from "../components";
 import { AuditTimeline } from "../components/AuditTimeline";
+import { QuestionInput } from "../components/QuestionInput";
 import { api, ApiError } from "../lib/api";
 import type { AuditEvent } from "../lib/audit";
 import { currentMembership, useAuth } from "../lib/auth";
@@ -47,6 +48,7 @@ function greeting(now = new Date()): string {
 /** The internal dashboard (US-021). Question metrics join once questions exist. */
 export function InternalHomePage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const state = useLocation().state as { created?: boolean; notice?: string } | null;
   const membership = currentMembership(user)!;
   const isAdmin = membership.role === "ADMIN";
@@ -93,6 +95,14 @@ export function InternalHomePage() {
       <p className="pc-field__hint">
         Signed in as {user?.email} · {ROLE_LABELS[membership.role]}
       </p>
+
+      <section className="pc-card">
+        <QuestionInput
+          label="Ask a policy question"
+          placeholder="e.g. How quickly should emergency repairs be handled?"
+          onAsk={(q) => navigate(`/internal/ask?q=${encodeURIComponent(q)}`)}
+        />
+      </section>
 
       {error ? (
         <ErrorState message="We couldn't load your dashboard. Please try again." errorId={error.errorId} onRetry={load} />

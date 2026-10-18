@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, RequireAuth, RequireOrganisation, SETUP_PATH } from "./lib/auth";
+import { AskPage } from "./pages/ask/AskPage";
 import { CheckEmailPage } from "./pages/auth/CheckEmailPage";
 import { InvitePage } from "./pages/auth/InvitePage";
 import { ForgotPasswordPage } from "./pages/auth/ForgotPasswordPage";
@@ -46,6 +47,16 @@ export function AppRoutes() {
           <RequireAuth>
             <RequireOrganisation>
               <InternalHomePage />
+            </RequireOrganisation>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/internal/ask"
+        element={
+          <RequireAuth>
+            <RequireOrganisation>
+              <AskPage />
             </RequireOrganisation>
           </RequireAuth>
         }
