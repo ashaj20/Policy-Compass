@@ -1,5 +1,6 @@
 """All ORM models. Import new model modules here so Alembic sees them."""
 
+from app.models.analytics import AnalyticsEvent, AnalyticsEventType, AnalyticsMonthlyTotal
 from app.models.answers import AnswerCache, LlmUsage
 from app.models.audit import AuditEvent
 from app.models.chunk import DocumentChunk
@@ -11,6 +12,9 @@ from app.models.question import AnswerFeedback, FeedbackReason, Question
 from app.models.user import AuthToken, User, UserSession
 
 __all__ = [
+    "AnalyticsEvent",
+    "AnalyticsEventType",
+    "AnalyticsMonthlyTotal",
     "AnswerCache",
     "Audience",
     "AuditEvent",

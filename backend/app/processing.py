@@ -16,7 +16,8 @@ from typing import Protocol
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.models import DocumentChunk, PolicyVersion, VersionStatus
+from app.analytics import track
+from app.models import AnalyticsEventType, DocumentChunk, PolicyVersion, VersionStatus
 from app.rag.embeddings import Embedder, get_embedder
 from app.rag.extract import ProcessingFailed
 from app.rag.service import RAGService
@@ -41,6 +42,9 @@ def process_version(db: Session, version_id, storage: Storage, embedder: Embedde
     )
     if version is None or version.status != VersionStatus.PROCESSING:
         return
+    # Saved on its own, so it is kept even if processing then fails.
+    _track(db, version, AnalyticsEventType.DOCUMENT_PROCESSING)
+    db.commit()
 
     def on_stage(stage: str) -> None:
         # Saved straight away so administrators can see progress while it runs.
@@ -66,7 +70,12 @@ def process_version(db: Session, version_id, storage: Storage, embedder: Embedde
     version.chunk_count = count
     version.failure_reason = None
     version.error_id = None
+    _track(db, version, AnalyticsEventType.DOCUMENT_READY)
     db.commit()
+
+
+def _track(db: Session, version: PolicyVersion, event: AnalyticsEventType) -> None:
+    track(db, version.organisation_id, event, policy_id=version.policy_id, version_id=version.id)
 
 
 def _fail(db: Session, version_id, reason: str, error_id: str | None) -> None:
@@ -79,6 +88,7 @@ def _fail(db: Session, version_id, reason: str, error_id: str | None) -> None:
     version.failure_reason = reason
     version.error_id = error_id
     version.processed_at = datetime.now(UTC)
+    _track(db, version, AnalyticsEventType.DOCUMENT_FAILED)
     db.commit()
 
 

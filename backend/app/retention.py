@@ -12,10 +12,13 @@ import logging
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import delete, or_, text
+from sqlalchemy import Date, delete, func, or_, select, text
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from app.models import (
+    AnalyticsEvent,
+    AnalyticsMonthlyTotal,
     AnswerCache,
     AuditEvent,
     AuthToken,
@@ -101,6 +104,7 @@ class RetentionReport:
     questions: int = 0
     usage_days: int = 0
     knowledge_gaps: int = 0
+    analytics_events: int = 0
 
 
 def run_retention(db: Session, now: datetime | None = None) -> RetentionReport:
@@ -138,6 +142,27 @@ def run_retention(db: Session, now: datetime | None = None) -> RetentionReport:
             KnowledgeGap.status == GapStatus.CLOSED,
             KnowledgeGap.closed_at < now - timedelta(days=30 * QUESTION_MONTHS),
         )
+    ).rowcount
+
+    # Analytics: events older than 12 months are added to anonymous monthly totals, then deleted.
+    analytics_cutoff = now - timedelta(days=30 * QUESTION_MONTHS)
+    month = func.date_trunc("month", AnalyticsEvent.occurred_at).cast(Date)
+    totals = (
+        select(AnalyticsEvent.organisation_id, month, AnalyticsEvent.event, func.count())
+        .where(AnalyticsEvent.occurred_at < analytics_cutoff)
+        .group_by(AnalyticsEvent.organisation_id, month, AnalyticsEvent.event)
+    )
+    upsert = pg_insert(AnalyticsMonthlyTotal).from_select(
+        ["organisation_id", "month", "event", "count"], totals
+    )
+    db.execute(
+        upsert.on_conflict_do_update(
+            index_elements=["organisation_id", "month", "event"],
+            set_={"count": AnalyticsMonthlyTotal.count + upsert.excluded.count},
+        )
+    )
+    report.analytics_events = db.execute(
+        delete(AnalyticsEvent).where(AnalyticsEvent.occurred_at < analytics_cutoff)
     ).rowcount
 
     # Stored answers are refreshed regularly even when policies don't change.

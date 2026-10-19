@@ -8,9 +8,11 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
+from app.analytics import track
 from app.audit import AuditAction, changed_fields, record
 from app.errors import AppError, NotFound, PermissionDenied
 from app.models import (
+    AnalyticsEventType,
     Audience,
     HelpRoute,
     Organisation,
@@ -82,6 +84,13 @@ def _store_version(
     )
     db.add(version)
     db.flush()
+    track(
+        db,
+        policy.organisation_id,
+        AnalyticsEventType.DOCUMENT_UPLOADED,
+        policy_id=policy.id,
+        version_id=version.id,
+    )
     return version
 
 

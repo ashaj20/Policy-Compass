@@ -16,12 +16,14 @@ from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, field_validator
 from sqlalchemy import func, select
 
+from app.analytics import track
 from app.answers.escalation import HelpContact, OwnerContact, find_escalation
 from app.answers.model import AnswerModel, get_answer_model
 from app.answers.service import AnswerResult, answer_question
 from app.deps import AppSettings, DbSession, MemberOf
 from app.errors import AppError, NotFound, PermissionDenied
 from app.models import (
+    AnalyticsEventType,
     AnswerFeedback,
     FeedbackReason,
     KnowledgeGap,
@@ -145,6 +147,23 @@ def save_question(
         from_cache=result.from_cache,
     )
     db.add(record)
+    track(db, organisation_id, AnalyticsEventType.QUESTION_ASKED, audience=requester)
+    if result.status == "ANSWERED":
+        track(
+            db,
+            organisation_id,
+            AnalyticsEventType.ANSWER_RETURNED,
+            audience=requester,
+            from_cache=result.from_cache,
+        )
+    else:
+        track(
+            db,
+            organisation_id,
+            AnalyticsEventType.INSUFFICIENT_EVIDENCE,
+            audience=requester,
+            reason=result.reason,
+        )
     db.commit()
     return record
 
@@ -332,6 +351,14 @@ def store_feedback(db, q: Question, body: FeedbackIn) -> FeedbackOut:
         db.add(fb)
     fb.helpful, fb.reason = body.helpful, reason
     fb.updated_at = func.clock_timestamp()
+    track(
+        db,
+        q.organisation_id,
+        AnalyticsEventType.ANSWER_FEEDBACK,
+        audience=q.requester,
+        helpful=body.helpful,
+        reason=reason,
+    )
     db.commit()
     return FeedbackOut(helpful=body.helpful, reason=reason)
 
