@@ -7,7 +7,8 @@ import { StatusBadge } from "../../components/StatusBadge";
 import { VersionMeta } from "../../components/VersionMeta";
 import { api, ApiError } from "../../lib/api";
 import { currentMembership, useAuth } from "../../lib/auth";
-import { formatFileSize, formatLongDate } from "../../lib/format";
+import { usageText, type PolicyUsage, type PolicyUsageList } from "../../lib/analytics";
+import { formatFileSize, formatLongDate, formatRelativeDay } from "../../lib/format";
 import { usePolling } from "../../lib/polling";
 import {
   AUDIENCE_OPTIONS,
@@ -67,6 +68,7 @@ export function PolicyDetailPage() {
   const [confirm, setConfirm] = useState<"archive" | "restore">();
   const [confirmBusy, setConfirmBusy] = useState(false);
   const [confirmError, setConfirmError] = useState<string>();
+  const [usage, setUsage] = useState<PolicyUsage | null>();
 
   const load = useCallback(async () => {
     setError(undefined);
@@ -80,6 +82,14 @@ export function PolicyDetailPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // How often this policy backs answers (US-034). Administrators only; optional.
+  useEffect(() => {
+    if (!isAdmin) return;
+    api<PolicyUsageList>(`/organisations/${membership.organisation_id}/policy-usage`)
+      .then((list) => setUsage(list.policies.find((p) => p.policy_id === policyId) ?? null))
+      .catch(() => setUsage(null));
+  }, [isAdmin, membership.organisation_id, policyId]);
 
   // Keep the page current while a version is being processed (US-012).
   const processing = policy?.versions.some((x) => x.status === "PROCESSING") ?? false;
@@ -250,6 +260,15 @@ export function PolicyDetailPage() {
             <dt>Source</dt>
             <dd>{policy.source ?? <span className="pc-auth__muted">Not recorded</span>}</dd>
           </div>
+          {usage && (
+            <div>
+              <dt>Used in answers (last 30 days)</dt>
+              <dd>
+                {usageText(usage)}
+                {usage.last_used && <span className="pc-auth__muted"> · last used {formatRelativeDay(usage.last_used)}</span>}
+              </dd>
+            </div>
+          )}
         </dl>
       </section>
 

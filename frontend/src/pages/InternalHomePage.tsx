@@ -7,6 +7,7 @@ import { api, ApiError } from "../lib/api";
 import type { AuditEvent } from "../lib/audit";
 import { currentMembership, useAuth } from "../lib/auth";
 import { formatRelativeDay } from "../lib/format";
+import { usageText, type PolicyUsageList } from "../lib/analytics";
 import { ANSWER_STATUS_LABELS, type QuestionPage, type QuestionSummary } from "../lib/questions";
 
 interface Dashboard {
@@ -66,6 +67,7 @@ export function InternalHomePage() {
   const [data, setData] = useState<Dashboard>();
   const [activity, setActivity] = useState<AuditEvent[]>();
   const [recent, setRecent] = useState<QuestionSummary[]>();
+  const [usage, setUsage] = useState<PolicyUsageList>();
   const [error, setError] = useState<ApiError>();
 
   const load = useCallback(async () => {
@@ -84,6 +86,14 @@ export function InternalHomePage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Most and least used policies (US-034). Administrators only; optional.
+  useEffect(() => {
+    if (!isAdmin) return;
+    api<PolicyUsageList>(`${base}/policy-usage`)
+      .then(setUsage)
+      .catch(() => setUsage(undefined));
+  }, [base, isAdmin]);
 
   // The member's own recent questions (US-025). Optional: the dashboard works without them.
   useEffect(() => {
@@ -228,6 +238,8 @@ export function InternalHomePage() {
             )}
           </section>
 
+          {isAdmin && usage && usage.policies.length > 0 && <PolicyUsageCard usage={usage} />}
+
           {isAdmin && activity && activity.length > 0 && (
             <section className="pc-card" aria-labelledby="recent-activity-heading">
               <h2 id="recent-activity-heading" className="pc-card__title">
@@ -247,5 +259,39 @@ export function InternalHomePage() {
         </>
       )}
     </AppShell>
+  );
+}
+
+/** Which policies are answering questions, and which active ones aren't (US-034). */
+function PolicyUsageCard({ usage }: { usage: PolicyUsageList }) {
+  const used = usage.policies.filter((p) => p.questions > 0).slice(0, 5);
+  const unused = usage.policies.filter((p) => p.active && p.questions === 0);
+  return (
+    <section className="pc-card" aria-labelledby="usage-heading">
+      <h2 id="usage-heading" className="pc-card__title">
+        Most used policies
+      </h2>
+      <p className="pc-field__hint">Questions answered using each policy in the last {usage.days} days.</p>
+      {used.length === 0 ? (
+        <p className="pc-auth__muted">No policies have been used to answer questions yet.</p>
+      ) : (
+        <ul className="pc-usage">
+          {used.map((p) => (
+            <li key={p.policy_id} className="pc-usage__item">
+              <Link to={`/internal/policies/${p.policy_id}`}>{p.name}</Link>
+              <span>
+                {usageText(p)}
+                {p.last_used && <span className="pc-field__hint"> · last used {formatRelativeDay(p.last_used)}</span>}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {unused.length > 0 && (
+        <p className="pc-field__hint">
+          Not used yet: {unused.map((p) => p.name).join(", ")}.
+        </p>
+      )}
+    </section>
   );
 }

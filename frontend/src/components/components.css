@@ -1862,3 +1862,18 @@ a.pc-button {
 .pc-gap-action {
   margin-top: var(--pc-space-4);
 }
+
+/* Policy usage (US-034) */
+.pc-usage {
+  list-style: none;
+  margin: var(--pc-space-2) 0;
+  padding: 0;
+}
+.pc-usage__item {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--pc-space-1) var(--pc-space-3);
+  padding: var(--pc-space-2) 0;
+  border-bottom: 1px solid var(--pc-border-subtle);
+}

@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import (
+    analytics,
     audit,
     auth,
     contacts,
@@ -90,6 +91,7 @@ def create_app() -> FastAPI:
     app.include_router(dashboard.router, prefix="/api")
     app.include_router(questions.router, prefix="/api")
     app.include_router(knowledge_gaps.router, prefix="/api")
+    app.include_router(analytics.router, prefix="/api")
     app.include_router(retention.router, prefix="/api")
     app.include_router(public.router, prefix="/api")
     if settings.frontend_dist:
