@@ -23,7 +23,7 @@ const AUDIENCE_FILTER = [
   { value: "PUBLIC", label: "Public" },
 ];
 
-const FILTER_KEYS = ["status", "q", "audience", "from", "to"];
+const FILTER_KEYS = ["status", "q", "audience", "from", "to", "feedback", "policy_id"];
 
 /**
  * Question history. Members see their own questions (US-019). Administrators can also see every
@@ -156,6 +156,16 @@ export function QuestionsPage() {
             </>
           )}
         </div>
+
+        {everyone && (params.get("feedback") || params.get("policy_id")) && (
+          <p className="pc-filter-note" role="status">
+            {params.get("feedback") === "unhelpful" ? "Showing answers marked unhelpful" : "Showing filtered answers"}
+            {params.get("policy_id") ? " that used one policy" : ""}.{" "}
+            <button type="button" className="pc-link-button" onClick={clearFilters}>
+              Show all questions
+            </button>
+          </p>
+        )}
 
         {error ? (
           <ErrorState message="We couldn't load these questions. Please try again." errorId={error.errorId} onRetry={load} />

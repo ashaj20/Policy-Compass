@@ -7,7 +7,7 @@ import { api, ApiError } from "../lib/api";
 import type { AuditEvent } from "../lib/audit";
 import { currentMembership, useAuth } from "../lib/auth";
 import { formatRelativeDay } from "../lib/format";
-import { usageText, type PolicyUsageList } from "../lib/analytics";
+import { usageText, type OperationalStatus, type PolicyUsageList } from "../lib/analytics";
 import { ANSWER_STATUS_LABELS, type QuestionPage, type QuestionSummary } from "../lib/questions";
 
 interface Dashboard {
@@ -68,6 +68,7 @@ export function InternalHomePage() {
   const [activity, setActivity] = useState<AuditEvent[]>();
   const [recent, setRecent] = useState<QuestionSummary[]>();
   const [usage, setUsage] = useState<PolicyUsageList>();
+  const [ops, setOps] = useState<OperationalStatus>();
   const [error, setError] = useState<ApiError>();
 
   const load = useCallback(async () => {
@@ -87,12 +88,15 @@ export function InternalHomePage() {
     load();
   }, [load]);
 
-  // Most and least used policies (US-034). Administrators only; optional.
+  // Most and least used policies (US-034) and operational alerts (US-035A). Admins only; optional.
   useEffect(() => {
     if (!isAdmin) return;
     api<PolicyUsageList>(`${base}/policy-usage`)
       .then(setUsage)
       .catch(() => setUsage(undefined));
+    api<OperationalStatus>(`${base}/operational-status`)
+      .then(setOps)
+      .catch(() => setOps(undefined));
   }, [base, isAdmin]);
 
   // The member's own recent questions (US-025). Optional: the dashboard works without them.
@@ -238,6 +242,8 @@ export function InternalHomePage() {
             )}
           </section>
 
+          {isAdmin && ops && <OperationalStatusCard status={ops} />}
+
           {isAdmin && usage && usage.policies.length > 0 && <PolicyUsageCard usage={usage} />}
 
           {isAdmin && activity && activity.length > 0 && (
@@ -292,6 +298,73 @@ function PolicyUsageCard({ usage }: { usage: PolicyUsageList }) {
           Not used yet: {unused.map((p) => p.name).join(", ")}.
         </p>
       )}
+    </section>
+  );
+}
+
+function plural(n: number, one: string, many = `${one}s`): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+/** Problems affecting the knowledge experience, in plain language (US-035A, Spec §23). */
+function OperationalStatusCard({ status }: { status: OperationalStatus }) {
+  const alerts: { key: string; text: string; to?: string }[] = [];
+  if (status.processing_failures > 0)
+    alerts.push({
+      key: "failed",
+      text: `${plural(status.processing_failures, "policy upload")} couldn't be processed`,
+      to: "/internal/policies?status=FAILED",
+    });
+  if (status.service_unavailable > 0)
+    alerts.push({
+      key: "unavailable",
+      text: `${plural(status.service_unavailable, "question")} couldn't be answered because the answering service was unavailable`,
+    });
+  if (status.limit_reached > 0)
+    alerts.push({
+      key: "limit",
+      text: `${plural(status.limit_reached, "question")} went unanswered because the daily answer limit was reached`,
+    });
+  for (const p of status.negative_feedback)
+    alerts.push({
+      key: `feedback-${p.policy_id}`,
+      text: `${plural(p.unhelpful, "answer")} using ${p.name} marked unhelpful in the last 30 days`,
+      to: `/internal/questions?scope=all&feedback=unhelpful&policy_id=${p.policy_id}`,
+    });
+  const nearLimit = status.answers_today >= status.daily_answer_limit * 0.8;
+
+  return (
+    <section className="pc-card" aria-labelledby="ops-heading">
+      <h2 id="ops-heading" className="pc-card__title">
+        Operational status
+      </h2>
+      {alerts.length === 0 ? (
+        <p className="pc-ops__ok">
+          <span aria-hidden="true">✓ </span>No problems in the last {status.days} days.
+        </p>
+      ) : (
+        <ul className="pc-ops">
+          {alerts.map((a) => (
+            <li key={a.key} className="pc-ops__alert">
+              <span aria-hidden="true">! </span>
+              {a.to ? <Link to={a.to}>{a.text}</Link> : a.text}
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="pc-field__hint">
+        {status.unanswered > 0 ? (
+          <Link to="/internal/questions?scope=all&status=INSUFFICIENT_EVIDENCE">
+            {plural(status.unanswered, "unanswered question")} in the last {status.days} days
+          </Link>
+        ) : (
+          `No unanswered questions in the last ${status.days} days`
+        )}
+        {" · "}
+        <span className={nearLimit ? "pc-ops__warn" : undefined}>
+          {status.answers_today} of {status.daily_answer_limit} answers used today
+        </span>
+      </p>
     </section>
   );
 }

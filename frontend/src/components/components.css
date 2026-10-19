@@ -1877,3 +1877,32 @@ a.pc-button {
   padding: var(--pc-space-2) 0;
   border-bottom: 1px solid var(--pc-border-subtle);
 }
+
+/* Operational status (US-035A) */
+.pc-ops {
+  list-style: none;
+  margin: 0 0 var(--pc-space-3);
+  padding: 0;
+  display: grid;
+  gap: var(--pc-space-2);
+}
+.pc-ops__alert {
+  padding: var(--pc-space-2) var(--pc-space-3);
+  border-left: 3px solid var(--pc-warning-700);
+  background: var(--pc-warning-50);
+  border-radius: var(--pc-radius-sm);
+}
+.pc-ops__ok {
+  color: var(--pc-success-700);
+  font-weight: 600;
+}
+.pc-ops__warn {
+  color: var(--pc-warning-700);
+  font-weight: 600;
+}
+.pc-filter-note {
+  margin: 0 0 var(--pc-space-3);
+  padding: var(--pc-space-2) var(--pc-space-3);
+  background: var(--pc-info-50);
+  border-radius: var(--pc-radius-sm);
+}

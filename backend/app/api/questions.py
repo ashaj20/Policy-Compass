@@ -282,6 +282,8 @@ def list_questions(
     date_from: Annotated[date | None, Query(alias="from")] = None,
     date_to: Annotated[date | None, Query(alias="to")] = None,
     search: Annotated[str | None, Query(alias="q", max_length=200)] = None,
+    feedback: Literal["helpful", "unhelpful"] | None = None,
+    policy_id: uuid.UUID | None = None,
     before: uuid.UUID | None = None,
     limit: Annotated[int, Query(ge=1, le=50)] = 20,
 ) -> QuestionPage:
@@ -302,6 +304,13 @@ def list_questions(
         stmt = stmt.where(Question.created_at < end)
     if status_filter:
         stmt = stmt.where(Question.status == status_filter)
+    if feedback:
+        stmt = stmt.join(AnswerFeedback, AnswerFeedback.question_id == Question.id).where(
+            AnswerFeedback.helpful.is_(feedback == "helpful")
+        )
+    if policy_id:
+        # Answers that cited this policy (US-035A: repeated negative feedback).
+        stmt = stmt.where(Question.citations.contains([{"policy_id": str(policy_id)}]))
     if search and search.strip():
         pattern = f"%{_escape_like(' '.join(search.split()))}%"
         stmt = stmt.where(Question.question.ilike(pattern, escape="\\"))
