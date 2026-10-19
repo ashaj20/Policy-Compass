@@ -57,8 +57,10 @@ function saveHistory(slug: string, items: PublicAnswer[]) {
  * The public page at /p/<slug> (US-026, US-027, US-029). No sign-in. Answers come only from the
  * organisation's approved public policies, and only public help routes are ever shown. No internal
  * navigation, contacts or data appear here.
+ *
+ * `embedded` is the compact version shown inside the website widget at /p/<slug>/widget (US-030).
  */
-export function PublicOrganisationPage() {
+export function PublicOrganisationPage({ embedded = false }: { embedded?: boolean }) {
   const { slug = "" } = useParams();
   const [org, setOrg] = useState<PublicOrganisation>();
   const [loadError, setLoadError] = useState<ApiError>();
@@ -78,6 +80,15 @@ export function PublicOrganisationPage() {
       .then(setOrg)
       .catch(setLoadError);
   }, [slug]);
+
+  // Inside a website's widget, outside links open in a new tab instead of replacing the panel.
+  useEffect(() => {
+    if (!embedded) return;
+    const base = document.createElement("base");
+    base.target = "_blank";
+    document.head.appendChild(base);
+    return () => base.remove();
+  }, [embedded]);
 
   useEffect(() => {
     if (!asking) return;
@@ -138,7 +149,10 @@ export function PublicOrganisationPage() {
   if (!org) return <LoadingState label="Loading…" />;
 
   return (
-    <div className="pc-public" style={brandStyle(org.primary_colour ?? DEFAULT_BRAND, org.brand_text_colour) as CSSProperties}>
+    <div
+      className={`pc-public${embedded ? " pc-public--embedded" : ""}`}
+      style={brandStyle(org.primary_colour ?? DEFAULT_BRAND, org.brand_text_colour) as CSSProperties}
+    >
       <header className="pc-public__header">
         {org.logo_url && <img src={org.logo_url} alt="" className="pc-public__logo" />}
         <span className="pc-public__name">{org.name}</span>
@@ -147,7 +161,7 @@ export function PublicOrganisationPage() {
       <main className="pc-public__main">
         <div className="pc-public__hero">
           <h1>How can we help?</h1>
-          <p className="pc-auth__muted">Ask a question about {org.name}'s policies and services.</p>
+          {!embedded && <p className="pc-auth__muted">Ask a question about {org.name}'s policies and services.</p>}
         </div>
 
         {!org.accepting_questions ? (
@@ -251,7 +265,7 @@ export function PublicOrganisationPage() {
           Answers are based only on {org.name}'s approved public policies. Please don't include personal information in your
           questions.
         </p>
-        {org.website && (
+        {org.website && !embedded && (
           <p>
             <a href={org.website} rel="noopener noreferrer">
               Visit {org.name}'s website

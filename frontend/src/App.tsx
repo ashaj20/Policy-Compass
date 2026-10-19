@@ -22,6 +22,7 @@ import { ActivityPage } from "./pages/settings/ActivityPage";
 import { BrandingPage } from "./pages/settings/BrandingPage";
 import { MembersPage } from "./pages/settings/MembersPage";
 import { OrganisationSettingsPage } from "./pages/settings/OrganisationSettingsPage";
+import { WidgetPage } from "./pages/settings/WidgetPage";
 import { RetentionPage } from "./pages/settings/RetentionPage";
 import { CreateOrganisationPage } from "./pages/setup/CreateOrganisationPage";
 
@@ -38,6 +39,7 @@ export function AppRoutes() {
       <Route path="/invite" element={<InvitePage />} />
       <Route path="/p/:slug" element={<PublicOrganisationPage />} />
       <Route path="/p/:slug/ask" element={<PublicOrganisationPage />} />
+      <Route path="/p/:slug/widget" element={<PublicOrganisationPage embedded />} />
       <Route
         path={SETUP_PATH}
         element={
@@ -172,6 +174,16 @@ export function AppRoutes() {
           <RequireAuth>
             <RequireOrganisation>
               <ContactsPage />
+            </RequireOrganisation>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/internal/settings/widget"
+        element={
+          <RequireAuth>
+            <RequireOrganisation>
+              <WidgetPage />
             </RequireOrganisation>
           </RequireAuth>
         }

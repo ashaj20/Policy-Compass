@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Widget preview</title>
+    <meta name="robots" content="noindex" />
+    <style>
+      body { margin: 0; font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; color: #141b24; background: #f2f5f8; }
+      header { background: #36414e; color: #fff; padding: 16px 24px; font-weight: 700; }
+      main { max-width: 720px; margin: 0 auto; padding: 32px 16px; }
+      .note { background: #fff; border: 1px dashed #8693a3; border-radius: 10px; padding: 16px; }
+    </style>
+  </head>
+  <body>
+    <header>Example organisation website</header>
+    <main>
+      <h1>Widget preview</h1>
+      <p class="note">
+        This is a sample web page showing how the Policy Compass widget looks on your website.
+        Use the button in the corner to ask a question. Only your public policies and help routes are used.
+      </p>
+      <p>Your real website would have its own content here.</p>
+    </main>
+    <script>
+      // Load the widget the same way a real website would, for the organisation in ?org=.
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var s = document.createElement("script");
+        s.src = "/widget.js";
+        s.async = true;
+        s.setAttribute("data-organisation", params.get("org") || "");
+        if (params.get("colour")) s.setAttribute("data-colour", params.get("colour"));
+        document.body.appendChild(s);
+      })();
+    </script>
+  </body>
+</html>

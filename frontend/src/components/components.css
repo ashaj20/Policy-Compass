@@ -1906,3 +1906,48 @@ a.pc-button {
   background: var(--pc-info-50);
   border-radius: var(--pc-radius-sm);
 }
+
+/* Embedded in the website widget (US-030): compact, no page chrome */
+.pc-public--embedded {
+  min-height: 100vh;
+}
+.pc-public--embedded .pc-public__header {
+  padding: var(--pc-space-2) var(--pc-space-4);
+}
+.pc-public--embedded .pc-public__logo {
+  height: 28px;
+}
+.pc-public--embedded .pc-public__name {
+  font-size: var(--pc-text-md);
+}
+.pc-public--embedded .pc-public__main {
+  padding: var(--pc-space-4) var(--pc-space-3);
+}
+.pc-public--embedded .pc-public__hero {
+  margin-bottom: var(--pc-space-3);
+}
+.pc-public--embedded .pc-public__hero h1 {
+  font-size: var(--pc-text-xl);
+  margin: 0;
+}
+.pc-public--embedded .pc-card {
+  padding: var(--pc-space-3);
+}
+.pc-public--embedded .pc-public__footer {
+  padding: var(--pc-space-3) var(--pc-space-3) var(--pc-space-4);
+}
+
+/* Website widget settings (US-030) */
+.pc-code__text {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: var(--pc-text-sm);
+  resize: vertical;
+}
+.pc-code__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pc-space-3);
+  margin-top: var(--pc-space-2);
+}

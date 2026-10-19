@@ -217,6 +217,6 @@ def test_downloads_are_sandboxed(org):
     resp = jane.get(
         f"/api/organisations/{org_id}/policies/{body['id']}/versions/{body['latest_version']['id']}/file"
     )
-    assert resp.headers["content-security-policy"] == "sandbox"
+    assert resp.headers["content-security-policy"] == "sandbox; frame-ancestors 'none'"
     assert resp.headers["content-disposition"].startswith("attachment;")
     assert resp.headers["x-content-type-options"] == "nosniff"

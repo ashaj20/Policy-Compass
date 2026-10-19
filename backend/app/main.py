@@ -24,6 +24,7 @@ from app.config import get_settings
 from app.errors import install_error_handlers
 from app.frontend import mount_frontend
 from app.limits import BodySizeLimitMiddleware
+from app.security_headers import SecurityHeadersMiddleware
 
 
 async def _retention_loop() -> None:
@@ -80,6 +81,7 @@ def create_app() -> FastAPI:
         max_bytes=settings.policy_max_bytes + 512 * 1024,
         file_limit_mb=settings.policy_max_bytes // (1024 * 1024),
     )
+    app.add_middleware(SecurityHeadersMiddleware)
     install_error_handlers(app)
     app.include_router(health.router, prefix="/api")
     app.include_router(auth.router, prefix="/api")
