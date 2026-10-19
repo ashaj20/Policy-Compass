@@ -7,6 +7,7 @@ import { api, ApiError } from "../lib/api";
 import type { AuditEvent } from "../lib/audit";
 import { currentMembership, useAuth } from "../lib/auth";
 import { formatRelativeDay } from "../lib/format";
+import { ANSWER_STATUS_LABELS, type QuestionPage, type QuestionSummary } from "../lib/questions";
 
 interface Dashboard {
   counts: {
@@ -56,6 +57,7 @@ export function InternalHomePage() {
 
   const [data, setData] = useState<Dashboard>();
   const [activity, setActivity] = useState<AuditEvent[]>();
+  const [recent, setRecent] = useState<QuestionSummary[]>();
   const [error, setError] = useState<ApiError>();
 
   const load = useCallback(async () => {
@@ -74,6 +76,13 @@ export function InternalHomePage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // The member's own recent questions (US-025). Optional: the dashboard works without them.
+  useEffect(() => {
+    api<QuestionPage>(`${base}/questions?limit=3`)
+      .then((page) => setRecent(page.questions))
+      .catch(() => setRecent([]));
+  }, [base]);
 
   const setupLeft = data?.setup.filter((s) => !s.done).length ?? 0;
 
@@ -102,6 +111,27 @@ export function InternalHomePage() {
           placeholder="e.g. How quickly should emergency repairs be handled?"
           onAsk={(q) => navigate(`/internal/ask?q=${encodeURIComponent(q)}`)}
         />
+        {recent && recent.length > 0 && (
+          <div className="pc-recent" aria-labelledby="recent-questions-heading">
+            <h2 id="recent-questions-heading" className="pc-answer__heading pc-answer__heading--small">
+              Your recent questions
+            </h2>
+            <ul className="pc-history">
+              {recent.map((q) => (
+                <li key={q.id} className="pc-history__item">
+                  <Link to={`/internal/questions/${q.id}`} className="pc-history__question">
+                    {q.question}
+                  </Link>
+                  <div className="pc-history__meta">
+                    <span>{ANSWER_STATUS_LABELS[q.status]}</span>
+                    <span>{formatRelativeDay(q.asked_at)}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <Link to="/internal/questions">See all your questions</Link>
+          </div>
+        )}
       </section>
 
       {error ? (

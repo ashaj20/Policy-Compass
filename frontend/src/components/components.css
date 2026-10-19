@@ -1781,3 +1781,13 @@ a.pc-button {
   font-size: var(--pc-text-sm);
   color: var(--pc-text-muted);
 }
+
+/* Dashboard recent questions (US-025) */
+.pc-recent {
+  margin-top: var(--pc-space-4);
+  padding-top: var(--pc-space-4);
+  border-top: 1px solid var(--pc-border-subtle);
+}
+.pc-recent .pc-history {
+  margin: var(--pc-space-2) 0;
+}
