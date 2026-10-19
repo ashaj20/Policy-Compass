@@ -48,8 +48,19 @@ export interface Answer {
   citations: Citation[];
   escalation: Escalation | null;
   feedback?: Feedback | null;
+  /** Who it was asked by: staff (INTERNAL) or the public. */
+  audience?: QuestionAudience;
+  /** Only the person who asked can give feedback. */
+  asked_by_me?: boolean;
   asked_at: string;
 }
+
+export type QuestionAudience = "INTERNAL" | "PUBLIC";
+
+export const AUDIENCE_LABELS: Record<QuestionAudience, string> = {
+  INTERNAL: "Asked by staff",
+  PUBLIC: "Asked by the public",
+};
 
 export interface QuestionSummary {
   id: string;
@@ -58,6 +69,7 @@ export interface QuestionSummary {
   reason: string | null;
   sources: string[];
   helpful: boolean | null;
+  audience: QuestionAudience;
   asked_at: string;
 }
 

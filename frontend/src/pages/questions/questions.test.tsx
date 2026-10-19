@@ -149,7 +149,7 @@ describe("My questions (US-019)", () => {
     expect(first).toHaveTextContent("Answered");
     expect(first).toHaveTextContent("today");
     expect(first).toHaveTextContent("Sources: Repairs Policy");
-    expect(first).toHaveTextContent("You found this helpful");
+    expect(first).toHaveTextContent("Marked helpful");
     expect(screen.getByRole("link", { name: "Can tenants keep pets?" }).closest("li")).toHaveTextContent("Not enough information");
     expect(screen.getByRole("link", { name: "Questions" })).toHaveAttribute("aria-current", "page");
 

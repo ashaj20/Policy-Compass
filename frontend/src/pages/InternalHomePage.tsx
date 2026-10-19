@@ -21,6 +21,14 @@ interface Dashboard {
   };
   attention: { kind: "failed" | "awaiting_approval" | "draft"; policy_id: string; policy_name: string; version: string; since: string }[];
   setup: { key: string; done: boolean }[];
+  /** Last 7 days; administrators only. */
+  questions: { total: number; internal: number; public: number; answered: number; unanswered: number } | null;
+}
+
+/** The first day of the dashboard's "this week" (the last 7 days), as YYYY-MM-DD. */
+function weekStart(now = new Date()): string {
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 const ROLE_LABELS = { ADMIN: "Administrator", STAFF: "Staff member" } as const;
@@ -93,6 +101,25 @@ export function InternalHomePage() {
         { label: "Drafts to review", value: data.counts.drafts_to_review, to: "#needs-attention", tone: "muted" },
         { label: "Processing", value: data.counts.processing, to: "/internal/policies?status=PROCESSING", tone: "info", adminOnly: true },
         { label: "Failed", value: data.counts.failed, to: "/internal/policies?status=FAILED", tone: "bad", adminOnly: true },
+        ...(data.questions
+          ? [
+              {
+                label: "Questions this week",
+                value: data.questions.total,
+                detail: `${data.questions.internal} staff · ${data.questions.public} public`,
+                to: `/internal/questions?scope=all&from=${weekStart()}`,
+                tone: "info",
+                adminOnly: true,
+              },
+              {
+                label: "Unanswered this week",
+                value: data.questions.unanswered,
+                to: `/internal/questions?scope=all&status=INSUFFICIENT_EVIDENCE&from=${weekStart()}`,
+                tone: data.questions.unanswered > 0 ? "warn" : "muted",
+                adminOnly: true,
+              },
+            ]
+          : []),
       ].filter((c) => isAdmin || !c.adminOnly)
     : [];
 
@@ -167,6 +194,7 @@ export function InternalHomePage() {
               <Link key={c.label} to={c.to} className={`pc-stat pc-stat--${c.tone}`}>
                 <span className="pc-stat__value">{c.value}</span>
                 <span className="pc-stat__label">{c.label}</span>
+                {"detail" in c && c.detail && <span className="pc-stat__detail">{c.detail}</span>}
               </Link>
             ))}
           </section>

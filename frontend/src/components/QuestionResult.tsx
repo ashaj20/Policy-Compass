@@ -18,19 +18,37 @@ export function QuestionResult({ answer }: { answer: Answer }) {
     });
   }
 
+  // Administrators can open anyone's question; only the person who asked gives feedback.
+  const canGiveFeedback = answer.asked_by_me !== false;
+  const isPublic = answer.audience === "PUBLIC";
+  const questionLabel = canGiveFeedback ? "Your question" : "Question";
+
   if (answer.status === "ANSWERED") {
     return (
       <AnswerCard
         answer={answer}
         policyHref={(c) => `/internal/policies/${c.policy_id}`}
-        footer={<FeedbackButtons key={answer.id} initial={answer.feedback} onSubmit={sendFeedback} />}
+        basis={isPublic ? "Based only on your organisation's approved public policies." : undefined}
+        questionLabel={questionLabel}
+        footer={
+          canGiveFeedback ? (
+            <FeedbackButtons key={answer.id} initial={answer.feedback} onSubmit={sendFeedback} />
+          ) : (
+            answer.feedback && (
+              <p className="pc-field__hint">
+                The person who asked marked this answer {answer.feedback.helpful ? "helpful" : "unhelpful"}.
+              </p>
+            )
+          )
+        }
       />
     );
   }
   return (
     <InsufficientEvidenceCard
       answer={answer}
-      audience="internal"
+      audience={isPublic ? "public" : "internal"}
+      questionLabel={questionLabel}
       noContactHint={
         membership.role === "ADMIN" && (
           <p className="pc-field__hint">

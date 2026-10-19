@@ -5,7 +5,7 @@ import { QuestionResult } from "../../components/QuestionResult";
 import { api, ApiError } from "../../lib/api";
 import { currentMembership, useAuth } from "../../lib/auth";
 import { formatRelativeDay } from "../../lib/format";
-import type { Answer } from "../../lib/questions";
+import { AUDIENCE_LABELS, type Answer } from "../../lib/questions";
 
 /** One of the member's past questions (US-019), exactly as it was answered at the time. */
 export function QuestionDetailPage() {
@@ -31,11 +31,15 @@ export function QuestionDetailPage() {
   return (
     <AppShell>
       <p>
-        <Link to="/internal/questions">← My questions</Link>
+        <Link to="/internal/questions">← Questions</Link>
       </p>
       <PageHeader
         title="Question"
-        description={answer ? `Asked ${formatRelativeDay(answer.asked_at)}. Sources show the policy versions used at the time.` : undefined}
+        description={
+          answer
+            ? `${answer.asked_by_me === false && answer.audience ? `${AUDIENCE_LABELS[answer.audience]}, ` : "Asked "}${formatRelativeDay(answer.asked_at)}. Sources show the policy versions used at the time.`
+            : undefined
+        }
       />
       {error ? (
         error.status === 404 ? (

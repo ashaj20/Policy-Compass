@@ -2,13 +2,14 @@
 approved policies (everything permitted for the internal audience). When we can't answer, the
 response says who to contact (US-017).
 
-Members see only their own questions (US-019) and give feedback on their own answers (US-020).
-Organisation-wide question history for administrators is US-032.
+Members see their own questions (US-019) and give feedback on their own answers (US-020).
+Administrators can also see every question in the organisation, internal and public, to spot
+knowledge gaps (US-032, US-033). Who asked is deliberately not shown, only the audience.
 """
 
 import uuid
 from dataclasses import asdict
-from datetime import datetime
+from datetime import UTC, date, datetime, time, timedelta
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, status
@@ -19,8 +20,8 @@ from app.answers.escalation import HelpContact, OwnerContact, find_escalation
 from app.answers.model import AnswerModel, get_answer_model
 from app.answers.service import AnswerResult, answer_question
 from app.deps import AppSettings, DbSession, MemberOf
-from app.errors import AppError, NotFound
-from app.models import AnswerFeedback, FeedbackReason, Membership, Question
+from app.errors import AppError, NotFound, PermissionDenied
+from app.models import AnswerFeedback, FeedbackReason, Membership, Question, Role
 from app.policies.audience import Requester
 from app.rag.embeddings import Embedder, get_embedder
 
@@ -91,6 +92,10 @@ class AnswerOut(BaseModel):
     # Who to contact when we couldn't answer; null when answered or nothing is configured.
     escalation: OwnerEscalationOut | HelpRouteEscalationOut | None = None
     feedback: FeedbackOut | None = None
+    # INTERNAL (staff) or PUBLIC.
+    audience: str = "INTERNAL"
+    # Only the person who asked can give feedback.
+    asked_by_me: bool = True
     asked_at: datetime
 
 
@@ -101,6 +106,7 @@ class QuestionSummaryOut(BaseModel):
     reason: str | None
     sources: list[str]
     helpful: bool | None
+    audience: str
     asked_at: datetime
 
 
@@ -154,7 +160,7 @@ def feedback_for(db, question_ids: list[uuid.UUID]) -> dict[uuid.UUID, AnswerFee
     return {f.question_id: f for f in rows}
 
 
-def answer_out(db, q: Question) -> AnswerOut:
+def answer_out(db, q: Question, membership: Membership | None = None) -> AnswerOut:
     fb = feedback_for(db, [q.id]).get(q.id)
     return AnswerOut(
         id=str(q.id),
@@ -165,6 +171,10 @@ def answer_out(db, q: Question) -> AnswerOut:
         citations=[CitationOut(**{k: c[k] for k in CitationOut.model_fields}) for c in q.citations],
         escalation=escalation_out(db, q),
         feedback=FeedbackOut(helpful=fb.helpful, reason=fb.reason) if fb else None,
+        audience=q.requester,
+        asked_by_me=membership is not None
+        and q.user_id is not None
+        and q.user_id == membership.user_id,
         asked_at=q.created_at,
     )
 
@@ -195,7 +205,7 @@ def ask(
         body.question,
         result,
     )
-    return answer_out(db, record)
+    return answer_out(db, record, membership)
 
 
 def _own_question(db, membership: Membership, question_id: uuid.UUID) -> Question:
@@ -210,33 +220,57 @@ def _own_question(db, membership: Membership, question_id: uuid.UUID) -> Questio
     return q
 
 
+def _visible_question(db, membership: Membership, question_id: uuid.UUID) -> Question:
+    """A question the member may open: their own, or any in the organisation for admins."""
+    q = db.get(Question, question_id)
+    if q is None or q.organisation_id != membership.organisation_id:
+        raise NotFound("This question is no longer available.")
+    if membership.role != Role.ADMIN and q.user_id != membership.user_id:
+        raise NotFound("This question is no longer available.")
+    return q
+
+
 def _escape_like(text: str) -> str:
     return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 @router.get("/questions")
-def my_questions(
+def list_questions(
     membership: MemberOf,
     db: DbSession,
+    scope: Literal["mine", "all"] = "mine",
     status_filter: Annotated[
         Literal["ANSWERED", "INSUFFICIENT_EVIDENCE"] | None, Query(alias="status")
     ] = None,
+    audience: Literal["INTERNAL", "PUBLIC"] | None = None,
+    date_from: Annotated[date | None, Query(alias="from")] = None,
+    date_to: Annotated[date | None, Query(alias="to")] = None,
     search: Annotated[str | None, Query(alias="q", max_length=200)] = None,
     before: uuid.UUID | None = None,
     limit: Annotated[int, Query(ge=1, le=50)] = 20,
 ) -> QuestionPage:
-    """The member's own questions, newest first (US-019)."""
-    stmt = select(Question).where(
-        Question.organisation_id == membership.organisation_id,
-        Question.user_id == membership.user_id,
-    )
+    """Questions, newest first: the member's own (US-019), or for administrators every
+    question in the organisation (US-032), which can be narrowed to unanswered ones (US-033)."""
+    stmt = select(Question).where(Question.organisation_id == membership.organisation_id)
+    if scope == "all":
+        if membership.role != Role.ADMIN:
+            raise PermissionDenied("Only administrators can see everyone's questions.")
+    else:
+        stmt = stmt.where(Question.user_id == membership.user_id)
+    if audience:
+        stmt = stmt.where(Question.requester == audience)
+    if date_from:
+        stmt = stmt.where(Question.created_at >= datetime.combine(date_from, time(), UTC))
+    if date_to:
+        end = datetime.combine(date_to + timedelta(days=1), time(), UTC)
+        stmt = stmt.where(Question.created_at < end)
     if status_filter:
         stmt = stmt.where(Question.status == status_filter)
     if search and search.strip():
         pattern = f"%{_escape_like(' '.join(search.split()))}%"
         stmt = stmt.where(Question.question.ilike(pattern, escape="\\"))
     if before is not None:
-        cursor = _own_question(db, membership, before)
+        cursor = _visible_question(db, membership, before)
         stmt = stmt.where(
             (Question.created_at < cursor.created_at)
             | ((Question.created_at == cursor.created_at) & (Question.id < cursor.id))
@@ -256,6 +290,7 @@ def my_questions(
                 reason=q.reason,
                 sources=list(dict.fromkeys(c["policy_name"] for c in q.citations)),
                 helpful=feedback[q.id].helpful if q.id in feedback else None,
+                audience=q.requester,
                 asked_at=q.created_at,
             )
             for q in rows
@@ -265,8 +300,8 @@ def my_questions(
 
 
 @router.get("/questions/{question_id}")
-def my_question(question_id: uuid.UUID, membership: MemberOf, db: DbSession) -> AnswerOut:
-    return answer_out(db, _own_question(db, membership, question_id))
+def get_question(question_id: uuid.UUID, membership: MemberOf, db: DbSession) -> AnswerOut:
+    return answer_out(db, _visible_question(db, membership, question_id), membership)
 
 
 def store_feedback(db, q: Question, body: FeedbackIn) -> FeedbackOut:

@@ -121,12 +121,27 @@ def test_public_questions_are_validated(org, client):
     assert ask(client, slug="no-such-org").status_code == 404
 
 
-def test_public_questions_never_appear_in_staff_history(org, client):
+def test_public_questions_are_only_visible_to_administrators(org, client, db, make_client):
+    from app.models import Membership, Role, User
+
     jane, org_id = org
     add_policy(jane, org_id, audience="PUBLIC")
     qid = ask(client).json()["id"]
+    # Never in anyone's own history...
     assert jane.get(f"/api/organisations/{org_id}/questions").json()["questions"] == []
-    assert jane.get(f"/api/organisations/{org_id}/questions/{qid}").status_code == 404
+    # ...staff can't open them...
+    john = make_client("john@example.org")
+    user = db.scalar(select(User).where(User.email == "john@example.org"))
+    db.add(Membership(organisation_id=org_id, user_id=user.id, role=Role.STAFF))
+    db.flush()
+    assert john.get(f"/api/organisations/{org_id}/questions/{qid}").status_code == 404
+    # ...administrators review them (US-032), but can't give feedback on the visitor's behalf.
+    opened = jane.get(f"/api/organisations/{org_id}/questions/{qid}").json()
+    assert opened["audience"] == "PUBLIC" and opened["asked_by_me"] is False
+    feedback = jane.put(
+        f"/api/organisations/{org_id}/questions/{qid}/feedback", json={"helpful": True}
+    )
+    assert feedback.status_code == 404
 
 
 def test_one_visitor_cannot_use_up_the_daily_answers(org, client, answer_model):

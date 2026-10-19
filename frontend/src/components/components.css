@@ -1791,3 +1791,7 @@ a.pc-button {
 .pc-recent .pc-history {
   margin: var(--pc-space-2) 0;
 }
+.pc-stat__detail {
+  font-size: var(--pc-text-xs);
+  color: var(--pc-text-muted);
+}

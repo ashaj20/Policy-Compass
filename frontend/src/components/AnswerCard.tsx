@@ -46,18 +46,20 @@ export function AnswerCard<C extends PublicCitation>({
   answer,
   policyHref,
   basis = "Based only on your organisation's approved policies.",
+  questionLabel = "Your question",
   footer,
 }: {
   answer: { id: string; question: string; answer: string | null; citations: C[] };
   /** Where a source's policy can be opened (internal only; the public get the excerpt). */
   policyHref?: (citation: C) => string;
   basis?: string;
+  questionLabel?: string;
   footer?: ReactNode;
 }) {
   return (
     <article className="pc-answer" aria-labelledby={`answer-${answer.id}`}>
       <p className="pc-answer__question">
-        <span className="pc-answer__kicker">Your question</span>
+        <span className="pc-answer__kicker">{questionLabel}</span>
         {answer.question}
       </p>
       <section className="pc-answer__body" aria-labelledby={`answer-${answer.id}`}>

@@ -26,11 +26,13 @@ export function InsufficientEvidenceCard({
   answer,
   audience,
   noContactHint,
+  questionLabel = "Your question",
 }: {
   answer: Pick<Answer, "id" | "question" | "reason" | "escalation">;
   audience: "internal" | "public";
   /** Extra guidance when no contact is configured, e.g. a link for administrators. */
   noContactHint?: ReactNode;
+  questionLabel?: string;
 }) {
   // Belt and braces: an internal owner is never shown on a public card, whatever the server sent.
   const contact = audience === "public" && answer.escalation?.kind === "owner" ? null : answer.escalation;
@@ -40,7 +42,7 @@ export function InsufficientEvidenceCard({
   return (
     <article className="pc-insufficient" aria-labelledby={`insufficient-${answer.id}`}>
       <p className="pc-answer__question">
-        <span className="pc-answer__kicker">Your question</span>
+        <span className="pc-answer__kicker">{questionLabel}</span>
         {answer.question}
       </p>
       <div className="pc-insufficient__body">

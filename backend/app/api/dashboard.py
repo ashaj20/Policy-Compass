@@ -1,18 +1,19 @@
-"""Internal dashboard (US-021). Counts and to-dos for the signed-in member's organisation.
+"""Internal dashboard (US-021, US-031). Counts and to-dos for the member's organisation.
 
-Question metrics (questions this week, unanswered) are added when questions exist (US-031).
+One dashboard for everyone (REVIEW D8): administrators also get question metrics for the last
+7 days ("this week", REVIEW D4).
 """
 
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.contacts.service import list_owners, list_routes
 from app.deps import DbSession, MemberOf
-from app.models import Policy, Role, VersionStatus
+from app.models import Policy, Question, Role, VersionStatus
 from app.policies import service as policies
 
 router = APIRouter(prefix="/organisations/{organisation_id}", tags=["dashboard"])
@@ -41,11 +42,37 @@ class SetupStep(BaseModel):
     done: bool
 
 
+class QuestionStats(BaseModel):
+    """Questions asked in the last 7 days."""
+
+    total: int
+    internal: int
+    public: int
+    answered: int
+    unanswered: int
+
+
 class DashboardOut(BaseModel):
     counts: PolicyCounts
     attention: list[AttentionItem]
     # Administrators only; empty for staff.
     setup: list[SetupStep]
+    # Administrators only; null for staff.
+    questions: QuestionStats | None = None
+
+
+def question_stats(db, organisation_id, since: datetime) -> QuestionStats:
+    rows = db.execute(
+        select(Question.requester, Question.status, func.count())
+        .where(Question.organisation_id == organisation_id, Question.created_at >= since)
+        .group_by(Question.requester, Question.status)
+    ).all()
+    stats = {"total": 0, "internal": 0, "public": 0, "answered": 0, "unanswered": 0}
+    for requester, status, n in rows:
+        stats["total"] += n
+        stats["internal" if requester == "INTERNAL" else "public"] += n
+        stats["answered" if status == "ANSWERED" else "unanswered"] += n
+    return QuestionStats(**stats)
 
 
 DEFAULT_COLOUR = "#1f5aa6"
@@ -130,4 +157,7 @@ def dashboard(membership: MemberOf, db: DbSession) -> DashboardOut:
         ),
         attention=attention[:10],
         setup=setup,
+        questions=question_stats(db, org.id, datetime.now(UTC) - timedelta(days=7))
+        if is_admin
+        else None,
     )
