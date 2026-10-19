@@ -20,6 +20,7 @@ from app.models import (
     DocumentChunk,
     HelpRoute,
     Invitation,
+    KnowledgeGap,
     Membership,
     Organisation,
     Policy,
@@ -97,6 +98,7 @@ def world(make_client, db):
     ).json()["id"]
 
     mark = make_client("mark@example.org")
+    gap = jane.post(f"{base}/knowledge-gaps", json={"question_id": question}).json()["id"]
     org_b = mark.post("/api/organisations", json={"name": "Other Org", "slug": "other-org"}).json()[
         "id"
     ]
@@ -110,6 +112,7 @@ def world(make_client, db):
         "invitation_id": invitation,
         "before": audit_event,
         "question_id": question,
+        "gap_id": gap,
     }
     return {"mark": mark, "org_a": org_a, "org_b": org_b, "ids": ids_a}
 
@@ -178,6 +181,10 @@ def snapshot(db, org_id) -> dict:
             for f in db.scalars(
                 select(AnswerFeedback).where(AnswerFeedback.organisation_id == org_id)
             )
+        ),
+        "gaps": sorted(
+            (g.question, g.status, g.notes or "")
+            for g in db.scalars(select(KnowledgeGap).where(KnowledgeGap.organisation_id == org_id))
         ),
         "chunks": len(
             list(

@@ -4,6 +4,7 @@ from app.models.answers import AnswerCache, LlmUsage
 from app.models.audit import AuditEvent
 from app.models.chunk import DocumentChunk
 from app.models.contact import HelpRoute, PolicyOwner, RouteType
+from app.models.knowledge_gap import GapStatus, KnowledgeGap
 from app.models.organisation import Invitation, Membership, Organisation, Role
 from app.models.policy import Audience, Policy, PolicyVersion, VersionStatus
 from app.models.question import AnswerFeedback, FeedbackReason, Question
@@ -25,6 +26,8 @@ __all__ = [
     "PolicyVersion",
     "AnswerFeedback",
     "FeedbackReason",
+    "GapStatus",
+    "KnowledgeGap",
     "Question",
     "Role",
     "RouteType",

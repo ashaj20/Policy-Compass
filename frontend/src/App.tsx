@@ -13,6 +13,8 @@ import { InternalHomePage } from "./pages/InternalHomePage";
 import { PoliciesPage } from "./pages/policies/PoliciesPage";
 import { PolicyDetailPage } from "./pages/policies/PolicyDetailPage";
 import { UploadPolicyPage } from "./pages/policies/UploadPolicyPage";
+import { KnowledgeGapDetailPage } from "./pages/gaps/KnowledgeGapDetailPage";
+import { KnowledgeGapsPage } from "./pages/gaps/KnowledgeGapsPage";
 import { QuestionDetailPage } from "./pages/questions/QuestionDetailPage";
 import { QuestionsPage } from "./pages/questions/QuestionsPage";
 import { PublicOrganisationPage } from "./pages/public/PublicOrganisationPage";
@@ -80,6 +82,26 @@ export function AppRoutes() {
           <RequireAuth>
             <RequireOrganisation>
               <QuestionDetailPage />
+            </RequireOrganisation>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/internal/knowledge-gaps"
+        element={
+          <RequireAuth>
+            <RequireOrganisation>
+              <KnowledgeGapsPage />
+            </RequireOrganisation>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/internal/knowledge-gaps/:gapId"
+        element={
+          <RequireAuth>
+            <RequireOrganisation>
+              <KnowledgeGapDetailPage />
             </RequireOrganisation>
           </RequireAuth>
         }

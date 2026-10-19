@@ -133,6 +133,10 @@ export function describeEvent(e: AuditEvent): AuditDescription {
       return { summary: `removed the public help route ${e.object_label}`, changes: [] };
     case "DEFAULT_HELP_ROUTE_CHANGED":
       return { summary: `made ${e.object_label} the default public help route`, changes: [] };
+    case "KNOWLEDGE_GAP_CREATED":
+      return { summary: `started tracking the knowledge gap “${e.object_label}”`, changes: [] };
+    case "KNOWLEDGE_GAP_UPDATED":
+      return { summary: `updated the knowledge gap “${e.object_label}”`, changes: diff(e) };
     case "POLICY_EDITED":
       return { summary: `edited the policy ${e.object_label}`, changes: diff(e) };
     default:

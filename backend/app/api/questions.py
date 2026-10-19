@@ -21,7 +21,14 @@ from app.answers.model import AnswerModel, get_answer_model
 from app.answers.service import AnswerResult, answer_question
 from app.deps import AppSettings, DbSession, MemberOf
 from app.errors import AppError, NotFound, PermissionDenied
-from app.models import AnswerFeedback, FeedbackReason, Membership, Question, Role
+from app.models import (
+    AnswerFeedback,
+    FeedbackReason,
+    KnowledgeGap,
+    Membership,
+    Question,
+    Role,
+)
 from app.policies.audience import Requester
 from app.rag.embeddings import Embedder, get_embedder
 
@@ -96,6 +103,8 @@ class AnswerOut(BaseModel):
     audience: str = "INTERNAL"
     # Only the person who asked can give feedback.
     asked_by_me: bool = True
+    # Administrators only: the knowledge gap tracking this question, if any (US-033A).
+    knowledge_gap_id: str | None = None
     asked_at: datetime
 
 
@@ -160,6 +169,13 @@ def feedback_for(db, question_ids: list[uuid.UUID]) -> dict[uuid.UUID, AnswerFee
     return {f.question_id: f for f in rows}
 
 
+def _gap_id(db, q: Question, membership: Membership | None) -> str | None:
+    if membership is None or membership.role != Role.ADMIN:
+        return None
+    gap_id = db.scalar(select(KnowledgeGap.id).where(KnowledgeGap.question_id == q.id))
+    return str(gap_id) if gap_id else None
+
+
 def answer_out(db, q: Question, membership: Membership | None = None) -> AnswerOut:
     fb = feedback_for(db, [q.id]).get(q.id)
     return AnswerOut(
@@ -175,6 +191,7 @@ def answer_out(db, q: Question, membership: Membership | None = None) -> AnswerO
         asked_by_me=membership is not None
         and q.user_id is not None
         and q.user_id == membership.user_id,
+        knowledge_gap_id=_gap_id(db, q, membership),
         asked_at=q.created_at,
     )
 

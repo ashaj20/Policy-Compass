@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { AppShell, ErrorState, PageHeader, Skeleton } from "../../components";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { Alert, AppShell, Button, ErrorState, PageHeader, Skeleton } from "../../components";
 import { QuestionResult } from "../../components/QuestionResult";
 import { api, ApiError } from "../../lib/api";
 import { currentMembership, useAuth } from "../../lib/auth";
@@ -14,6 +14,9 @@ export function QuestionDetailPage() {
   const membership = currentMembership(user)!;
   const [answer, setAnswer] = useState<Answer>();
   const [error, setError] = useState<ApiError>();
+  const [tracking, setTracking] = useState(false);
+  const [gapError, setGapError] = useState<string>();
+  const navigate = useNavigate();
 
   const load = useCallback(async () => {
     setError(undefined);
@@ -27,6 +30,23 @@ export function QuestionDetailPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  async function trackGap() {
+    setTracking(true);
+    setGapError(undefined);
+    try {
+      const gap = await api<{ id: string }>(`/organisations/${membership.organisation_id}/knowledge-gaps`, {
+        method: "POST",
+        body: JSON.stringify({ question_id: questionId }),
+      });
+      navigate(`/internal/knowledge-gaps/${gap.id}`);
+    } catch (err) {
+      const apiErr = err as ApiError;
+      setGapError(apiErr.status === 409 ? apiErr.message : "We couldn't create the knowledge gap. Please try again.");
+    } finally {
+      setTracking(false);
+    }
+  }
 
   return (
     <AppShell>
@@ -52,7 +72,31 @@ export function QuestionDetailPage() {
           <Skeleton lines={4} />
         </div>
       ) : (
-        <QuestionResult answer={answer} />
+        <>
+          <QuestionResult answer={answer} />
+          {membership.role === "ADMIN" && (
+            <section className="pc-card pc-gap-action" aria-label="Knowledge gap">
+              {answer.knowledge_gap_id ? (
+                <p>
+                  This question is tracked as a knowledge gap.{" "}
+                  <Link to={`/internal/knowledge-gaps/${answer.knowledge_gap_id}`}>View knowledge gap</Link>
+                </p>
+              ) : (
+                <>
+                  <p className="pc-field__hint">
+                    {answer.status === "ANSWERED"
+                      ? "If this answer was wrong or incomplete, track it so the policies can be improved."
+                      : "Track this question so the missing information can be added to your policies."}
+                  </p>
+                  {gapError && <Alert tone="error" title={gapError} />}
+                  <Button variant="secondary" onClick={trackGap} loading={tracking}>
+                    Track as knowledge gap
+                  </Button>
+                </>
+              )}
+            </section>
+          )}
+        </>
       )}
     </AppShell>
   );

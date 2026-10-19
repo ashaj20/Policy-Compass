@@ -22,7 +22,7 @@ interface Dashboard {
   attention: { kind: "failed" | "awaiting_approval" | "draft"; policy_id: string; policy_name: string; version: string; since: string }[];
   setup: { key: string; done: boolean }[];
   /** Last 7 days; administrators only. */
-  questions: { total: number; internal: number; public: number; answered: number; unanswered: number } | null;
+  questions: { total: number; internal: number; public: number; answered: number; unanswered: number; open_gaps: number } | null;
 }
 
 /** The first day of the dashboard's "this week" (the last 7 days), as YYYY-MM-DD. */
@@ -116,6 +116,13 @@ export function InternalHomePage() {
                 value: data.questions.unanswered,
                 to: `/internal/questions?scope=all&status=INSUFFICIENT_EVIDENCE&from=${weekStart()}`,
                 tone: data.questions.unanswered > 0 ? "warn" : "muted",
+                adminOnly: true,
+              },
+              {
+                label: "Open knowledge gaps",
+                value: data.questions.open_gaps,
+                to: "/internal/knowledge-gaps",
+                tone: "muted",
                 adminOnly: true,
               },
             ]

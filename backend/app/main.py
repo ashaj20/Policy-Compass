@@ -11,6 +11,7 @@ from app.api import (
     contacts,
     dashboard,
     health,
+    knowledge_gaps,
     members,
     organisations,
     policies,
@@ -88,6 +89,7 @@ def create_app() -> FastAPI:
     app.include_router(contacts.router, prefix="/api")
     app.include_router(dashboard.router, prefix="/api")
     app.include_router(questions.router, prefix="/api")
+    app.include_router(knowledge_gaps.router, prefix="/api")
     app.include_router(retention.router, prefix="/api")
     app.include_router(public.router, prefix="/api")
     if settings.frontend_dist:

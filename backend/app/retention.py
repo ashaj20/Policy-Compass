@@ -19,7 +19,9 @@ from app.models import (
     AnswerCache,
     AuditEvent,
     AuthToken,
+    GapStatus,
     Invitation,
+    KnowledgeGap,
     LlmUsage,
     Question,
     UserSession,
@@ -98,6 +100,7 @@ class RetentionReport:
     cached_answers: int = 0
     questions: int = 0
     usage_days: int = 0
+    knowledge_gaps: int = 0
 
 
 def run_retention(db: Session, now: datetime | None = None) -> RetentionReport:
@@ -127,6 +130,14 @@ def run_retention(db: Session, now: datetime | None = None) -> RetentionReport:
 
     report.questions = db.execute(
         delete(Question).where(Question.created_at < now - timedelta(days=30 * QUESTION_MONTHS))
+    ).rowcount
+
+    # Open gaps are kept while being worked on; closed ones go 12 months after closing.
+    report.knowledge_gaps = db.execute(
+        delete(KnowledgeGap).where(
+            KnowledgeGap.status == GapStatus.CLOSED,
+            KnowledgeGap.closed_at < now - timedelta(days=30 * QUESTION_MONTHS),
+        )
     ).rowcount
 
     # Stored answers are refreshed regularly even when policies don't change.

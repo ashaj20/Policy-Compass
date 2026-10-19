@@ -52,6 +52,8 @@ export interface Answer {
   audience?: QuestionAudience;
   /** Only the person who asked can give feedback. */
   asked_by_me?: boolean;
+  /** Administrators only: the knowledge gap tracking this question (US-033A). */
+  knowledge_gap_id?: string | null;
   asked_at: string;
 }
 

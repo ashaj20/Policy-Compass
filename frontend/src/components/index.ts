@@ -5,4 +5,5 @@ export { Button } from "./Button";
 export { Input, PasswordInput } from "./Input";
 export { ConfirmDialog, Modal } from "./Modal";
 export { Select } from "./Select";
+export { Textarea } from "./Textarea";
 export { EmptyState, ErrorState, LoadingState, Skeleton } from "./States";

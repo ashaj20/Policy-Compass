@@ -13,7 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from app.contacts.service import list_owners, list_routes
 from app.deps import DbSession, MemberOf
-from app.models import Policy, Question, Role, VersionStatus
+from app.models import GapStatus, KnowledgeGap, Policy, Question, Role, VersionStatus
 from app.policies import service as policies
 
 router = APIRouter(prefix="/organisations/{organisation_id}", tags=["dashboard"])
@@ -50,6 +50,8 @@ class QuestionStats(BaseModel):
     public: int
     answered: int
     unanswered: int
+    # Knowledge gaps still Open or Investigating (US-033A), whenever they were raised.
+    open_gaps: int = 0
 
 
 class DashboardOut(BaseModel):
@@ -72,7 +74,15 @@ def question_stats(db, organisation_id, since: datetime) -> QuestionStats:
         stats["total"] += n
         stats["internal" if requester == "INTERNAL" else "public"] += n
         stats["answered" if status == "ANSWERED" else "unanswered"] += n
-    return QuestionStats(**stats)
+    open_gaps = db.scalar(
+        select(func.count())
+        .select_from(KnowledgeGap)
+        .where(
+            KnowledgeGap.organisation_id == organisation_id,
+            KnowledgeGap.status.in_([GapStatus.OPEN, GapStatus.INVESTIGATING]),
+        )
+    )
+    return QuestionStats(**stats, open_gaps=open_gaps)
 
 
 DEFAULT_COLOUR = "#1f5aa6"
